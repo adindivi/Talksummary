@@ -15,7 +15,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
+import com.example.ui.util.debouncedClickable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -206,7 +208,7 @@ fun TalkSummaryMainScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Chat,
+                                imageVector = Icons.AutoMirrored.Filled.Chat,
                                 contentDescription = "Logo",
                                 tint = KakaoTextDark,
                                 modifier = Modifier.size(18.dp)
@@ -560,29 +562,58 @@ fun TalkSummaryMainScreen(
         if (showErrorDetails) {
             AlertDialog(
                 onDismissRequest = { viewModel.setShowErrorDetails(false) },
-                icon = { Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFFEF4444)) },
-                title = { Text(errorTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                icon = {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color(0xFFFEF2F2), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Warning",
+                            tint = Color(0xFFEF4444),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = errorTitle.ifEmpty { "안내" },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = BrandSlate
+                    )
+                },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(errorDescription, fontSize = 13.sp)
-                        Divider(color = Color(0xFFF1F5F9))
-                        Text("💡 간단 해결 방안:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text("1. [AI 점검 키 상태 확인]을 누르고 API Key 정합성을 테스트하세요.", fontSize = 11.sp, color = Color.Gray)
-                        Text("2. 내보낸 카톡 파일이 손상되지 않은 올바른 텍스트(.txt) 문서인지 체크 바랍니다.", fontSize = 11.sp, color = Color.Gray)
+                        Text(
+                            text = errorDescription,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            color = Color(0xFF334155)
+                        )
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+                        Text("💡 조치 안내:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = BrandSlate)
+                        Text("• API 키가 등록되어 있는지 또는 무료 할당량이 만료되지 않았는지 [설정] 메뉴에서 확인해 보세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
+                        Text("• 카카오톡 내보내기 대화 파일(.txt)이 올바른 형식인지 확인해 보세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
                     }
                 },
                 confirmButton = {
                     Button(
                         colors = ButtonDefaults.buttonColors(containerColor = BrandSlate),
+                        shape = RoundedCornerShape(10.dp),
                         onClick = {
                             viewModel.setShowErrorDetails(false)
                             viewModel.setShowSettings(true)
                         }
-                    ) { Text("설정 및 진단 열기") }
+                    ) { Text("설정 및 진단 열기", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { viewModel.setShowErrorDetails(false) }) { Text("확인") }
-                }
+                    TextButton(onClick = { viewModel.setShowErrorDetails(false) }) { Text("닫기", color = Color.Gray, fontSize = 12.sp) }
+                },
+                shape = RoundedCornerShape(20.dp),
+                containerColor = Color.White
             )
         }
 
@@ -1119,7 +1150,7 @@ fun TimelineColumn(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.List,
+                        imageVector = Icons.AutoMirrored.Filled.List,
                         contentDescription = "Empty list",
                         tint = Color(0xFFCBD5E1),
                         modifier = Modifier.size(52.dp)
@@ -1397,7 +1428,7 @@ fun ChatRoomScreen(
             ) {
                 if (isMobile) {
                     IconButton(onClick = onBackToList) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF374151))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF374151))
                     }
                 } else {
                     Spacer(modifier = Modifier.width(6.dp))
@@ -1664,7 +1695,7 @@ fun ChatRoomScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Send,
+                        imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
                         tint = KakaoTextDark,
                         modifier = Modifier.size(13.dp)
@@ -1961,7 +1992,7 @@ fun SettingsDialog(
                         }
                     }
 
-                    Divider(color = Color(0xFFF1F5F9))
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
 
                     // Diagnostic Test Blocks
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

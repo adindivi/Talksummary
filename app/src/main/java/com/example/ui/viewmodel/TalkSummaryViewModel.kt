@@ -103,6 +103,16 @@ class TalkSummaryViewModel(
     private val _localInferenceStats = MutableStateFlow<String?>(null)
     val localInferenceStats = _localInferenceStats.asStateFlow()
 
+    // Concurrency guard to prevent rapid double-trigger or overlapping AI tasks
+    private val _isProcessing = MutableStateFlow(false)
+    val isProcessing = _isProcessing.asStateFlow()
+
+    // Last detailed error info for user-friendly guidance
+    private val _lastErrorInfo = MutableStateFlow<com.example.data.api.GeminiErrorInfo?>(null)
+    val lastErrorInfo = _lastErrorInfo.asStateFlow()
+
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
     // Loading overlay
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
@@ -164,6 +174,14 @@ class TalkSummaryViewModel(
     override fun onCleared() {
         super.onCleared()
         modelLoader.close()
+        networkCallback?.let { callback ->
+            try {
+                val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                cm.unregisterNetworkCallback(callback)
+            } catch (e: Exception) {
+                com.example.util.AppLogger.e("TalkSummaryViewModel", "Failed to unregister network callback: ${e.message}")
+            }
+        }
     }
 
     private fun loadAllSettings() {
@@ -312,7 +330,12 @@ class TalkSummaryViewModel(
     }
 
     fun parseAndImportText(rawText: String) {
+        if (_isProcessing.value) {
+            showToast("현재 다른 작업이 진행 중입니다. 잠시만 기다려주세요.", "info")
+            return
+        }
         _showPasteModal.value = false
+        _isProcessing.value = true
         showLoading("대화 대용량 텍스트 해석", "클라이언트 측 가상 샌드박스에서 대화를 분석 중...")
         viewModelScope.launch {
             try {
@@ -320,26 +343,35 @@ class TalkSummaryViewModel(
                     KakaoTalkParser.parse(rawText)
                 }
                 if (parsed.isEmpty()) {
-                    hideLoading()
-                    showError("가져오기 실패", "카카오톡의 날짜 또는 대화 줄 형식을 하나도 찾을 수 없습니다.")
+                    showError("가져오기 실패", "카카오톡의 날짜 또는 대화 줄 형식을 하나도 찾을 수 없습니다.\n올바른 형태의 카카오톡 대화 내용 텍스트인지 다시 한 번 확인해 주세요.")
                     return@launch
                 }
                 // Overwrite old parsed documents automatically when importing new files/texts
                 repository.clearAll()
                 repository.saveChatDays(parsed)
-                hideLoading()
                 showToast("대화가 동기화 및 덮어쓰기 완료되었습니다!", "success")
                 // Reset selections
                 selectChatDay(null)
+            } catch (oom: OutOfMemoryError) {
+                com.example.util.AppLogger.e("TalkSummaryViewModel", "Out of memory during text parsing", oom)
+                showError("메모리 부족", "대화 텍스트가 너무 방대하여 기기 메모리에서 처리할 수 없습니다. 텍스트를 나누어 입력해 주세요.")
             } catch (e: Exception) {
+                com.example.util.AppLogger.e("TalkSummaryViewModel", "Error parsing text", e)
+                showError("대화 해석 오류", "대화 해석 중 오류가 발생했습니다: ${e.localizedMessage}")
+            } finally {
+                _isProcessing.value = false
                 hideLoading()
-                showError("가져오기 실패", "대화 해석 중 오류가 발생했습니다: ${e.message}")
             }
         }
     }
 
     fun parseAndImportBytes(bytes: ByteArray) {
+        if (_isProcessing.value) {
+            showToast("현재 다른 작업이 진행 중입니다. 잠시만 기다려주세요.", "info")
+            return
+        }
         _showPasteModal.value = false
+        _isProcessing.value = true
         showLoading("대화 대용량 텍스트 해석", "클라이언트 측 가상 샌드박스에서 대화를 인코딩 자동 분석하며 해석 중...")
         viewModelScope.launch {
             try {
@@ -347,20 +379,24 @@ class TalkSummaryViewModel(
                     KakaoTalkParser.parseFromBytes(bytes)
                 }
                 if (parsed.isEmpty()) {
-                    hideLoading()
                     showError("가져오기 실패", "카카오톡의 대화 줄 형식을 하나도 찾을 수 없습니다.\n올바른 형태의 카카오톡 대화 내용 텍스트 파일 (.txt)을 다시 한 번 확인해 주세요.")
                     return@launch
                 }
                 // Overwrite old parsed documents automatically when importing new files/texts
                 repository.clearAll()
                 repository.saveChatDays(parsed)
-                hideLoading()
                 showToast("대화가 동기화 및 덮어쓰기 완료되었습니다!", "success")
                 // Reset selections
                 selectChatDay(null)
+            } catch (oom: OutOfMemoryError) {
+                com.example.util.AppLogger.e("TalkSummaryViewModel", "Out of memory during byte parsing", oom)
+                showError("메모리 부족", "대화 파일이 너무 커서 기기 메모리에서 처리할 수 없습니다. 대화 파일을 분할하여 불러와 주세요.")
             } catch (e: Exception) {
+                com.example.util.AppLogger.e("TalkSummaryViewModel", "Error parsing bytes", e)
+                showError("대화 해석 오류", "대화 파일 해석 중 오류가 발생했습니다: ${e.localizedMessage}")
+            } finally {
+                _isProcessing.value = false
                 hideLoading()
-                showError("가져오기 실패", "대화 해석 중 오류가 발생했습니다: ${e.message}")
             }
         }
     }
@@ -434,17 +470,22 @@ class TalkSummaryViewModel(
     }
 
     fun triggerSingleSummarize(chatDay: ChatDay) {
+        if (_isProcessing.value) {
+            showToast("현재 다른 AI 요약 또는 분석 작업이 진행 중입니다. 잠시만 기다려주세요.", "info")
+            return
+        }
+
         val useLocal = _useLocalModel.value
         val localPath = _localModelPath.value
         val key = _geminiApiKey.value
 
         if (!useLocal && key.isEmpty()) {
-            showToast("설정에서 구글 AI API 키를 먼저 등록하거나 로컬 모델을 구동해 주세요.", "error")
+            showError("API 키 필요", "Google Gemini AI 요약을 실행하려면 [설정] 메뉴에서 API 키를 먼저 등록해 주세요.")
             return
         }
 
         if (useLocal && localPath.isEmpty()) {
-            showToast("로컬 모델 모드가 켜져있으나 모델 파일이 설정되지 않았습니다.", "error")
+            showError("로컬 모델 미설정", "온디바이스 GGUF 로컬 엔진이 선택되어 있으나 모델 파일(.gguf)이 탑재되지 않았습니다. [설정] 메뉴에서 모델 파일을 선택해 주세요.")
             return
         }
 
@@ -452,6 +493,7 @@ class TalkSummaryViewModel(
         val message = if (useLocal) "온디바이스 llama.cpp C++ 엔진으로 요약 중입니다..." else "구글 제미나이 언어 인스턴스로 요약 전송 중..."
 
         showLoading(title, message)
+        _isProcessing.value = true
 
         viewModelScope.launch {
             try {
@@ -515,23 +557,35 @@ class TalkSummaryViewModel(
                     }
                     showToast("성공적으로 인공지능 요약 갱신이 완료되었습니다.", "success")
                 } else {
-                    showError("요약 실패", "AI 모델로부터 부적합한 응답이 도착했습니다. 연결 혹은 모델 설정을 확인해 보시기 바랍니다.")
+                    val error = _lastErrorInfo.value
+                    if (error != null) {
+                        showError(error.title, error.description)
+                    } else {
+                        showError("요약 실패", "AI 모델로부터 적합한 응답이 도착하지 않았습니다. 네트워크 상태 혹은 API Key 설정을 확인해 주세요.")
+                    }
                 }
             } catch (e: Exception) {
-                showError("요약 실패", "AI 모델 처리 중 오류가 발생했습니다: ${e.message}")
+                com.example.util.AppLogger.e("TalkSummaryViewModel", "AI summarization error", e)
+                showError("요약 처리 오류", "AI 모델 처리 중 오류가 발생했습니다: ${e.localizedMessage}")
             } finally {
                 if (useLocal) {
                     InferenceForegroundService.stop(getApplication())
                 }
+                _isProcessing.value = false
                 hideLoading()
             }
         }
     }
 
     fun triggerBulkSummarize() {
+        if (_isProcessing.value) {
+            showToast("현재 다른 AI 요약 또는 분석 작업이 진행 중입니다. 잠시만 기다려주세요.", "info")
+            return
+        }
+
         val key = _geminiApiKey.value
         if (key.isEmpty()) {
-            showToast("AI 설정에서 API Key를 먼저 입력 및 활성화해주셔야 일괄 요약이 진행됩니다.", "error")
+            showError("API 키 필요", "전체 일괄 요약을 진행하려면 [설정] 메뉴에서 API Key를 먼저 입력 및 등록해 주세요.")
             return
         }
 
@@ -543,28 +597,40 @@ class TalkSummaryViewModel(
         }
 
         showLoading("일괄 AI 요약 진행", "총 ${unsummarized.size}개의 일자를 요약 중입니다. 잠시만 기다려주세요.")
+        _isProcessing.value = true
+
         viewModelScope.launch {
             var count = 0
-            for (item in unsummarized) {
-                count++
-                _loadingMessage.value = "(${count}/${unsummarized.size}) ${item.date} 요약 중..."
-                try {
-                    val prompt = buildGeminiPrompt(item.messages)
-                    val result = requestGemini(prompt, key, _activeModel.value)
-                    if (result != null) {
-                        val formatted = "[AI 정밀 요약]\n$result"
-                        repository.updateSummary(item.date, formatted)
-                        if (_selectedChatDay.value?.date == item.date) {
-                            _selectedChatDay.value = _selectedChatDay.value?.copy(summary = formatted)
+            try {
+                for (item in unsummarized) {
+                    count++
+                    _loadingMessage.value = "(${count}/${unsummarized.size}) ${item.date} 요약 중..."
+                    try {
+                        val prompt = buildGeminiPrompt(item.messages)
+                        val result = requestGemini(prompt, key, _activeModel.value)
+                        if (result != null) {
+                            val formatted = "[AI 정밀 요약]\n$result"
+                            repository.updateSummary(item.date, formatted)
+                            if (_selectedChatDay.value?.date == item.date) {
+                                _selectedChatDay.value = _selectedChatDay.value?.copy(summary = formatted)
+                            }
+                        } else {
+                            val err = _lastErrorInfo.value
+                            if (err != null && (err.isQuotaExceeded || err.isInvalidKey)) {
+                                showError(err.title, "(${item.date} 요약 중 중단됨)\n${err.description}")
+                                break
+                            }
                         }
+                        delay(1200) // Rate limiting pacing delay
+                    } catch (e: Exception) {
+                        com.example.util.AppLogger.e("TalkSummaryViewModel", "Error summarizing ${item.date}", e)
                     }
-                    delay(1200) // Rate limiting pacing delay
-                } catch (e: Exception) {
-                    // Log and continue on bulk
                 }
+                showToast("전체 날짜 일괄 요약 분석이 완료되었습니다!", "success")
+            } finally {
+                _isProcessing.value = false
+                hideLoading()
             }
-            hideLoading()
-            showToast("전체 날짜 일괄 요약 분석이 완료되었습니다!", "success")
         }
     }
 
@@ -661,21 +727,26 @@ class TalkSummaryViewModel(
             generationConfig = GenerationConfig(temperature = 0.5f)
         )
         try {
-            android.util.Log.d("TalkSummaryViewModel", "Requesting Gemini with model $realModel (original request: $model) and prompt length: ${prompt.length}")
+            com.example.util.AppLogger.d("TalkSummaryViewModel", "Requesting Gemini with model $realModel and prompt length: ${prompt.length}")
             val response = GeminiApiClient.service.generateContent(
                 model = realModel,
                 apiKey = apiKey,
                 request = request
             )
             val resultText = response.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            android.util.Log.d("TalkSummaryViewModel", "Gemini response model path successfully executed. Result: $resultText")
+            com.example.util.AppLogger.d("TalkSummaryViewModel", "Gemini response executed successfully.")
+            _lastErrorInfo.value = null
             resultText
         } catch (e: retrofit2.HttpException) {
             val rawError = e.response()?.errorBody()?.string() ?: ""
-            android.util.Log.e("TalkSummaryViewModel", "Gemini HTTP error ${e.code()}: $rawError")
+            com.example.util.AppLogger.e("TalkSummaryViewModel", "Gemini HTTP error ${e.code()}: $rawError")
+            val errorInfo = com.example.data.api.GeminiErrorClassifier.classify(e.code(), rawError)
+            _lastErrorInfo.value = errorInfo
             null
         } catch (e: Exception) {
-            android.util.Log.e("TalkSummaryViewModel", "Gemini request failed for model $realModel (original: $model): ${e.message}", e)
+            com.example.util.AppLogger.e("TalkSummaryViewModel", "Gemini request failed: ${e.message}", e)
+            val errorInfo = com.example.data.api.GeminiErrorClassifier.classifyException(e)
+            _lastErrorInfo.value = errorInfo
             null
         }
     }
