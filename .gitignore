@@ -1,0 +1,21 @@
+*.iml
+.gradle
+.kotlin
+/local.properties
+local.properties
+.idea/
+.DS_Store
+/build
+app/build/
+/captures
+.externalNativeBuild
+.cxx/
+.env
+debug.keystore
+*.apk
+*.aab
+문서 DB/
+"문서 DB/"
+*.py
+*.patch
+temp_*.txt

@@ -1,0 +1,6 @@
+{
+  "name": "TalkSummary",
+  "description": "카카오톡 대화 텍스트 파일을 정밀 분석하여 일자별 대화를 실제 메신저처럼 고스란히 복원하고, 구글 Gemini AI를 연동해 대화 요약과 키워드를 자동 생성하는 안전한 모바일용 로컬 보관소입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
