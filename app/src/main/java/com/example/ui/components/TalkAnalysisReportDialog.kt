@@ -262,9 +262,9 @@ fun TalkAnalysisReportDialog(
                                         tint = KakaoBtnDark,
                                         modifier = Modifier.size(18.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "카카오톡으로 리포트 공유하기",
+                                        "카톡으로 분석 결과 공유하기",
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = KakaoBtnDark
@@ -310,10 +310,12 @@ private fun ReportHeader(
                     shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
-                        text = "📊 카톡 분석",
+                        text = "📊 대화 리포트",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1D4ED8),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
@@ -334,16 +336,18 @@ private fun ReportHeader(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "${report.displayMonth} 대화 분석",
+                text = "${report.displayMonth}의 기록",
                 fontSize = 19.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF0F172A)
+                color = Color(0xFF0F172A),
+                maxLines = 1,
+                softWrap = false
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "${report.daysCount}일간 총 ${report.totalMessages}건의 대화 기록이에요",
+                text = "총 ${report.daysCount}일 동안 ${report.totalMessages}개의 이야기를 나눴어요",
                 fontSize = 12.sp,
                 color = Color(0xFF64748B)
             )
@@ -409,10 +413,12 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
             ) {
                 Text("👥", fontSize = 15.sp)
                 Text(
-                    "누가 대화를 이끌었을까?",
+                    "대화 지분율",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E293B)
+                    color = Color(0xFF1E293B),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
@@ -420,7 +426,7 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
 
             if (participantShares.isEmpty()) {
                 Text(
-                    "참여자 데이터가 충분하지 않습니다.",
+                    "아직 나눈 대화가 충분하지 않아요",
                     fontSize = 12.sp,
                     color = Color(0xFF94A3B8),
                     modifier = Modifier.padding(vertical = 8.dp)
@@ -553,7 +559,7 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "👆 색상 막대를 터치하면 발화자 이름을 확인할 수 있어요",
+                                text = "색상 바를 누르면 멤버별 대화량을 볼 수 있어요",
                                 fontSize = 11.sp,
                                 color = Color(0xFF94A3B8)
                             )
@@ -712,10 +718,12 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
             ) {
                 Text("🔥", fontSize = 15.sp)
                 Text(
-                    "가장 뜨거웠던 하루",
+                    "가장 뜨거웠던 날",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF9A3412)
+                    color = Color(0xFF9A3412),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
@@ -740,6 +748,8 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFC2410C),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                     )
                 }
@@ -748,7 +758,7 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "이날 하루에만 ${peakDay.messageCount}건의 대화가 쏟아졌어요!",
+                text = "이날 하루에만 ${peakDay.messageCount}개의 이야기가 오갔어요",
                 fontSize = 12.sp,
                 color = Color(0xFF9A3412),
                 lineHeight = 16.sp
@@ -782,7 +792,7 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "📅 하루 평균 대화량: ${avgDaily}건",
+                text = "📅 하루 평균 대화는 ${avgDaily}건이에요",
                 fontSize = 11.5.sp,
                 color = Color(0xFF9A3412).copy(alpha = 0.85f)
             )
@@ -834,7 +844,7 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                 ) {
                     Text("📈", fontSize = 14.sp)
                     Text(
-                        "월간 대화량 파동",
+                        "일별 대화 흐름",
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0369A1),
@@ -851,7 +861,7 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                     shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
-                        text = "실시간 터치",
+                        text = "터치 탐색",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0284C7),
@@ -863,9 +873,11 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
             }
 
             Text(
-                text = "곡선을 좌우로 밀어 일자별 대화 흐름을 확인해보세요",
+                text = "차트를 슥 밀어서 가장 활발했던 날을 찾아보세요",
                 fontSize = 11.sp,
                 color = Color(0xFF0284C7).copy(alpha = 0.85f),
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
             )
 
@@ -1181,10 +1193,12 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                 ) {
                     Text("⏰", fontSize = 13.sp)
                     Text(
-                        text = "${currentPoint.dayOfMonth}일 24시간 체결량",
+                        text = "${currentPoint.dayOfMonth}일 시간대별 대화",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0369A1)
+                        color = Color(0xFF0369A1),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 
@@ -1194,10 +1208,12 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            text = "🔥 피크: ${currentPoint.peakHour}시 (${currentPoint.peakHourCount}건)",
+                            text = "🔥 피크 ${currentPoint.peakHour}시 (${currentPoint.peakHourCount}건)",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFC2410C),
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                         )
                     }
@@ -1205,7 +1221,9 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                     Text(
                         text = "대화 기록 없음",
                         fontSize = 10.sp,
-                        color = Color(0xFF94A3B8)
+                        color = Color(0xFF94A3B8),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -1233,7 +1251,7 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = "📍 ${safeHover}시 ~ ${safeHover + 1}시: ${hourCount}건 체결 (${hourPct}%)",
+                                text = "📍 ${safeHover}시: ${hourCount}건 (${hourPct}%)",
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0284C7),
@@ -1244,7 +1262,7 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                     }
                 } else {
                     Text(
-                        text = "👆 24시간 바를 터치해 시간대별 체결량을 확인하세요",
+                        text = "시간대 바를 누르면 몇 시에 활발했는지 알려드려요",
                         fontSize = 10.sp,
                         color = Color(0xFF64748B),
                         maxLines = 1,
@@ -1363,10 +1381,12 @@ private fun TimeSlotPersonaSection(timeStats: TimeSlotDistribution) {
             ) {
                 Text("⏰", fontSize = 15.sp)
                 Text(
-                    "대화 골든타임 & 페르소나",
+                    "대화 골든타임",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF166534)
+                    color = Color(0xFF166534),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
@@ -1490,10 +1510,12 @@ private fun ChemistrySection(
             ) {
                 Text("💫", fontSize = 15.sp)
                 Text(
-                    "우리들의 대화 분위기 & 관계 케미",
+                    "방 분위기와 케미",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF6B21A8)
+                    color = Color(0xFF6B21A8),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
@@ -1562,18 +1584,22 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
             ) {
                 Text("⚡", fontSize = 15.sp)
                 Text(
-                    "선톡 지수 & 티키타카 속도",
+                    "선톡과 답장 속도",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF166534)
+                    color = Color(0xFF166534),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "대화에 가장 먼저 불을 지피는 사람은 누구일까요?",
+                text = "대화에 먼저 불을 지피는 사람은 누구일까요?",
                 fontSize = 12.sp,
-                color = Color(0xFF15803D)
+                color = Color(0xFF15803D),
+                maxLines = 1,
+                softWrap = false
             )
 
             val leader = firstPing.leaders.firstOrNull()
@@ -1598,7 +1624,7 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                         ) {
                             Text("🥇", fontSize = 13.sp)
                             Text(
-                                "선톡 장인:",
+                                "선톡 1위",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF166534),
@@ -1696,7 +1722,7 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                             border = BorderStroke(1.dp, Color(0xFFFDE68A))
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                Text("⚡ 광속 칼답러", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
+                                Text("⚡ 가장 빠른 답장", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309), maxLines = 1, softWrap = false)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     fast.name,
@@ -1707,7 +1733,7 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text("평균 ${fast.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFFB45309))
+                                Text("평균 ${fast.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFFB45309), maxLines = 1, softWrap = false)
                             }
                         }
                     }
@@ -1720,7 +1746,7 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                             border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                Text("🐢 느긋한 관전자", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
+                                Text("🐢 느긋한 답장", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569), maxLines = 1, softWrap = false)
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     slow.name,
@@ -1731,7 +1757,7 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text("평균 ${slow.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFF64748B))
+                                Text("평균 ${slow.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFF64748B), maxLines = 1, softWrap = false)
                             }
                         }
                     }
@@ -1759,18 +1785,22 @@ private fun LinguisticQuirksSection(quirks: LinguisticQuirksReport) {
             ) {
                 Text("😂", fontSize = 15.sp)
                 Text(
-                    "말버릇 & 웃음 지수 리포트",
+                    "말버릇과 웃음 지수",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF92400E)
+                    color = Color(0xFF92400E),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "우리 방은 'ㅋㅋㅋ'형일까, 'ㅎㅎㅎ'형일까?",
+                text = "우리 방에서 가장 자주 쓰인 웃음과 말투예요",
                 fontSize = 12.sp,
-                color = Color(0xFFB45309)
+                color = Color(0xFFB45309),
+                maxLines = 1,
+                softWrap = false
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -1887,18 +1917,22 @@ private fun TalkHeatmapSection(heatmap: TalkHeatmapData) {
             ) {
                 Text("🟩", fontSize = 15.sp)
                 Text(
-                    "대화 잔디 캘린더",
+                    "대화 잔디",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0369A1)
+                    color = Color(0xFF0369A1),
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "이번 달 ${heatmap.totalDaysInMonth}일 중 ${heatmap.activeDaysCount}일(${heatmap.activeDayPercentage}%) 동안 대화했어요",
+                text = "${heatmap.totalDaysInMonth}일 중 ${heatmap.activeDaysCount}일(${heatmap.activeDayPercentage}%)을 함께 이야기했어요",
                 fontSize = 12.sp,
-                color = Color(0xFF0284C7)
+                color = Color(0xFF0284C7),
+                maxLines = 1,
+                softWrap = false
             )
 
             // Interactive selected tile tooltip
@@ -1918,10 +1952,12 @@ private fun TalkHeatmapSection(heatmap: TalkHeatmapData) {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "📅 ${tile.date}: ${tile.count}건의 대화 ${if (tile.count >= 80) "🔥" else ""}",
+                                    text = "📅 ${tile.date} · 총 ${tile.count}건 ${if (tile.count >= 80) "🔥" else ""}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                                 IconButton(
                                     onClick = { selectedTile = null },
