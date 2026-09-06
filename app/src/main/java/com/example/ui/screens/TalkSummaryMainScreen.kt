@@ -139,6 +139,7 @@ fun TalkSummaryMainScreen(
     val loadingMessage by viewModel.loadingMessage.collectAsStateWithLifecycle()
     val toastMessage by viewModel.toastMessage.collectAsStateWithLifecycle()
     val toastType by viewModel.toastType.collectAsStateWithLifecycle()
+    val isBatteryOptimizationIgnored by viewModel.isBatteryOptimizationIgnored.collectAsStateWithLifecycle()
 
     // File launcher for selected logs imports (.txt)
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -520,7 +521,9 @@ fun TalkSummaryMainScreen(
                 onRunSystemCheck = { viewModel.runFullSystemCheck() },
                 onPickLocalModel = { localModelPickerLauncher.launch("*/*") },
                 onShowToast = { msg, type -> viewModel.showToast(msg, type) },
-                onShowPrivacyModal = { showPrivacyModal = true }
+                onShowPrivacyModal = { showPrivacyModal = true },
+                isBatteryOptimizationIgnored = isBatteryOptimizationIgnored,
+                onRequestBatteryExemption = { viewModel.requestIgnoreBatteryOptimization(context) }
             )
         }
 
@@ -1840,7 +1843,9 @@ fun SettingsDialog(
     onRunSystemCheck: () -> Unit,
     onPickLocalModel: () -> Unit,
     onShowToast: (String, String) -> Unit = { _, _ -> },
-    onShowPrivacyModal: () -> Unit = {}
+    onShowPrivacyModal: () -> Unit = {},
+    isBatteryOptimizationIgnored: Boolean = true,
+    onRequestBatteryExemption: () -> Unit = {}
 ) {
     var keyText by remember { mutableStateOf(apiKey) }
     var useChecked by remember { mutableStateOf(useGemini) }
@@ -1944,6 +1949,100 @@ fun SettingsDialog(
                                 color = Color(0xFF64748B),
                                 lineHeight = 15.sp
                             )
+                        }
+                    }
+
+                    // Background Battery & Doze Optimization Policy Card
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (isBatteryOptimizationIgnored) Color(0xFFECFDF5) else Color(0xFFFFFBEB),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (isBatteryOptimizationIgnored) Color(0xFFA7F3D0) else Color(0xFFFDE68A),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .padding(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isBatteryOptimizationIgnored) Icons.Filled.CheckCircle else Icons.Filled.Bolt,
+                                        contentDescription = "Battery Status",
+                                        tint = if (isBatteryOptimizationIgnored) Color(0xFF059669) else Color(0xFFD97706),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "백그라운드 절전 및 배터리 정책",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = BrandSlate
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (isBatteryOptimizationIgnored) Color(0xFFD1FAE5) else Color(0xFFFEF3C7),
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                ) {
+                                    Text(
+                                        text = if (isBatteryOptimizationIgnored) "절전 예외 허용됨" else "절전 모드 켜짐",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isBatteryOptimizationIgnored) Color(0xFF065F46) else Color(0xFF92400E)
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = if (isBatteryOptimizationIgnored) {
+                                    "화면이 꺼지거나 다른 앱을 사용하는 동안에도 긴 대화 요약이 안드로이드 Doze(절전) 모드에 방해받지 않고 안전하게 실행돼요."
+                                } else {
+                                    "화면이 꺼지면 안드로이드 Doze 절전 정책에 의해 AI 요약 속도가 느려지거나 일시 중단될 수 있어요. 안정적인 백그라운드 요약을 위해 절전 예외를 권장해요."
+                                },
+                                fontSize = 10.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 15.sp
+                            )
+
+                            if (!isBatteryOptimizationIgnored) {
+                                Button(
+                                    onClick = onRequestBatteryExemption,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(36.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandSlate),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text("⚡", fontSize = 11.sp)
+                                        Text(
+                                            text = "배터리 절전 예외 설정하기",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 

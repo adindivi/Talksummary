@@ -25,6 +25,7 @@ import com.example.engine.GgufParser
 import com.example.engine.StreamTokenEvent
 import com.example.model.GgufMetadata
 import com.example.service.BackgroundTaskManager
+import com.example.service.BatteryOptimizationHelper
 import com.example.service.InferenceForegroundService
 import com.example.service.TaskProgress
 import com.example.service.TaskStatus
@@ -124,6 +125,10 @@ class TalkSummaryViewModel(
     private val _lastErrorInfo = MutableStateFlow<com.example.data.api.GeminiErrorInfo?>(null)
     val lastErrorInfo = _lastErrorInfo.asStateFlow()
 
+    // Battery Optimization & Doze mode status
+    private val _isBatteryOptimizationIgnored = MutableStateFlow<Boolean>(false)
+    val isBatteryOptimizationIgnored: StateFlow<Boolean> = _isBatteryOptimizationIgnored.asStateFlow()
+
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     // Loading overlay (synced with backgroundTaskManager for full backward compatibility)
@@ -184,6 +189,7 @@ class TalkSummaryViewModel(
     )
 
     init {
+        _isBatteryOptimizationIgnored.value = BatteryOptimizationHelper.isBatteryOptimizationIgnored(application)
         loadAllSettings()
         setupNetworkListener()
         setupAbortListener()
@@ -358,6 +364,15 @@ class TalkSummaryViewModel(
             showToast("설정을 안전하게 저장했어요.", "success")
             _showSettings.value = false
         }
+    }
+
+    fun refreshBatteryOptimizationStatus() {
+        _isBatteryOptimizationIgnored.value = BatteryOptimizationHelper.isBatteryOptimizationIgnored(getApplication())
+    }
+
+    fun requestIgnoreBatteryOptimization(context: Context) {
+        BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(context)
+        refreshBatteryOptimizationStatus()
     }
 
     fun cancelActiveTask(reason: String = "요약을 멈췄어요.") {
@@ -750,6 +765,11 @@ class TalkSummaryViewModel(
 
         val total = unsummarized.size
         _isProcessing.value = true
+
+        refreshBatteryOptimizationStatus()
+        if (!_isBatteryOptimizationIgnored.value && total >= 3) {
+            showToast("💡 화면이 꺼져도 중단 없이 요약하려면 [설정]에서 배터리 절전 예외를 켜두세요.", "info")
+        }
 
         viewModelScope.launch {
             backgroundTaskManager.startTask(

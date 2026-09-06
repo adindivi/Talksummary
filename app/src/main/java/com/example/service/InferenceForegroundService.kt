@@ -7,10 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.example.MainActivity
 import com.example.util.AppLogger
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -133,12 +135,23 @@ class InferenceForegroundService : Service() {
                 val total = intent.getIntExtra(EXTRA_TOTAL, 0)
                 val notification = buildNotification(currentTitle, statusText, current, total)
                 try {
-                    startForeground(NOTIFICATION_ID, notification)
+                    acquireWakeLock()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        } else {
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                        }
+                        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, fgsType)
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
                 } catch (e: Exception) {
                     AppLogger.e("InferenceForegroundService", "startForeground failed: ${e.message}", e)
                 }
             }
             ACTION_UPDATE_PROGRESS -> {
+                acquireWakeLock() // Refresh wakelock safety window during ongoing tasks
                 intent.getStringExtra(EXTRA_TITLE)?.let { currentTitle = it }
                 val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "작업 진행 중..."
                 val current = intent.getIntExtra(EXTRA_CURRENT, 0)
@@ -237,23 +250,40 @@ class InferenceForegroundService : Service() {
     }
 
     private fun acquireWakeLock() {
-        if (wakeLock == null) {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "TalkSummary:TaskWakeLock"
-            ).apply {
-                setReferenceCounted(false)
-                acquire(15 * 60 * 1000L) // 15 minutes max safety limit
+        try {
+            if (wakeLock == null) {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                wakeLock = powerManager?.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "TalkSummary:TaskWakeLock"
+                )?.apply {
+                    setReferenceCounted(false)
+                }
             }
+            wakeLock?.let {
+                if (!it.isHeld) {
+                    it.acquire(15 * 60 * 1000L) // 15 minutes max safety limit
+                    AppLogger.d("InferenceForegroundService", "WakeLock acquired")
+                }
+            }
+        } catch (e: Exception) {
+            AppLogger.w("InferenceForegroundService", "Failed to acquire WakeLock: ${e.message}")
         }
     }
 
     private fun releaseWakeLock() {
-        wakeLock?.let {
-            if (it.isHeld) it.release()
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                    AppLogger.d("InferenceForegroundService", "WakeLock released")
+                }
+            }
+        } catch (e: Exception) {
+            AppLogger.w("InferenceForegroundService", "Failed to release WakeLock: ${e.message}")
+        } finally {
+            wakeLock = null
         }
-        wakeLock = null
     }
 
     override fun onDestroy() {
