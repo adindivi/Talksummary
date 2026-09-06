@@ -3443,7 +3443,7 @@ fun SettingsDialog(
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "✅ AI 모델 준비 완료",
+                                                text = "✅ 내 폰의 AI 준비 완료",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 11.sp,
                                                 color = BrandGreenAccent
@@ -3463,12 +3463,12 @@ fun SettingsDialog(
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.Refresh,
-                                                        contentDescription = "다시 불러오기",
+                                                        contentDescription = "변경하기",
                                                         tint = BrandSlate,
                                                         modifier = Modifier.size(12.dp)
                                                     )
                                                     Text(
-                                                        text = "내 폰의 AI 다시 불러오기",
+                                                        text = "변경하기",
                                                         fontSize = 9.5.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = BrandSlate
@@ -3486,17 +3486,64 @@ fun SettingsDialog(
                                             overflow = TextOverflow.Ellipsis
                                         )
 
-                                        if (loadedGgufMetadata != null) {
+                                        // Toss Style: 3 User Benefit Micro-Badges
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Badge 1: 데이터 0원
                                             Surface(
-                                                color = Color(0xFFE0F2FE),
-                                                shape = RoundedCornerShape(6.dp)
+                                                shape = RoundedCornerShape(999.dp),
+                                                color = Color(0xFFECFDF5),
+                                                border = BorderStroke(0.7.dp, Color(0xFFA7F3D0))
                                             ) {
                                                 Text(
-                                                    text = "${loadedGgufMetadata.modelName} • ${loadedGgufMetadata.quantizationType.label} • ${loadedGgufMetadata.architecture.uppercase()} • ctx:${loadedGgufMetadata.contextLength}",
+                                                    text = "📶 데이터 0원",
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF0369A1),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                    color = Color(0xFF065F46),
+                                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                                )
+                                            }
+
+                                            // Badge 2: 완전 오프라인
+                                            Surface(
+                                                shape = RoundedCornerShape(999.dp),
+                                                color = Color(0xFFEFF6FF),
+                                                border = BorderStroke(0.7.dp, Color(0xFFBFDBFE))
+                                            ) {
+                                                Text(
+                                                    text = "🔒 완전 오프라인",
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF1E40AF),
+                                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                                )
+                                            }
+
+                                            // Badge 3: 초경량 모델 사이즈 라벨
+                                            val modelSizeLabel = remember(localPathText, loadedGgufMetadata) {
+                                                val name = (loadedGgufMetadata?.modelName ?: localPathText).lowercase()
+                                                when {
+                                                    name.contains("0.5b") -> "⚡ 0.5B 초경량"
+                                                    name.contains("1.5b") -> "⚡ 1.5B 초경량"
+                                                    name.contains("3b") -> "⚡ 3B 고성능"
+                                                    name.contains("7b") -> "⚡ 7B 고성능"
+                                                    else -> "⚡ 온디바이스 AI"
+                                                }
+                                            }
+                                            Surface(
+                                                shape = RoundedCornerShape(999.dp),
+                                                color = Color(0xFFF8FAFC),
+                                                border = BorderStroke(0.7.dp, Color(0xFFCBD5E1))
+                                            ) {
+                                                Text(
+                                                    text = modelSizeLabel,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF334155),
+                                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
                                                 )
                                             }
                                         }
