@@ -97,6 +97,37 @@ class TalkSummaryRepository(private val db: AppDatabase) {
         db.settingsDao().clearAll()
     }
 
+    val chatArchivesFlow: Flow<List<com.example.data.db.ChatArchiveEntity>> =
+        db.chatArchiveDao().getAllArchivesFlow()
+
+    suspend fun getAllArchives(): List<com.example.data.db.ChatArchiveEntity> = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().getAllArchives()
+    }
+
+    suspend fun getArchiveById(id: String): com.example.data.db.ChatArchiveEntity? = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().getArchiveById(id)
+    }
+
+    suspend fun insertArchive(archive: com.example.data.db.ChatArchiveEntity) = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().insertArchive(archive)
+    }
+
+    suspend fun deleteArchive(id: String) = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().deleteArchiveById(id)
+    }
+
+    suspend fun updateArchiveFavorite(id: String, isFavorite: Boolean) = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().updateFavorite(id, isFavorite)
+    }
+
+    suspend fun updateArchiveLastOpened(id: String, lastOpenedAt: Long) = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().updateLastOpened(id, lastOpenedAt)
+    }
+
+    suspend fun updateArchiveTitle(id: String, newTitle: String) = withContext(Dispatchers.IO) {
+        db.chatArchiveDao().updateRoomTitle(id, newTitle)
+    }
+
     private fun generateHeuristicSummary(messages: List<Message>): LocalHeuristic {
         val wordCounts = mutableMapOf<String, Int>()
         val participantCounts = mutableMapOf<String, Int>()

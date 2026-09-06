@@ -20,6 +20,8 @@ import com.example.data.api.Content as ApiContent
 import com.example.data.api.Part as ApiPart
 import com.example.data.api.GenerationConfig
 import com.example.data.db.AppDatabase
+import com.example.data.db.ChatArchiveEntity
+import com.example.data.db.ChatArchiveMapper
 import com.example.data.parser.KakaoTalkParser
 import com.example.data.llm.ModelLoader
 import com.example.engine.GgufParser
@@ -94,6 +96,20 @@ class TalkSummaryViewModel(
 
     private val _showPasteModal = MutableStateFlow(false)
     val showPasteModal = _showPasteModal.asStateFlow()
+
+    private val _showArchiveModal = MutableStateFlow(false)
+    val showArchiveModal = _showArchiveModal.asStateFlow()
+
+    // Chat Archives (대화방 보관함)
+    val chatArchives: StateFlow<List<ChatArchiveEntity>> =
+        repository.chatArchivesFlow.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    private val _activeArchiveId = MutableStateFlow<String?>(null)
+    val activeArchiveId = _activeArchiveId.asStateFlow()
 
     private val _showErrorDetails = MutableStateFlow(false)
     val showErrorDetails = _showErrorDetails.asStateFlow()
@@ -261,6 +277,9 @@ class TalkSummaryViewModel(
 
             val user = repository.getSetting("main_user_name") ?: ""
             _mainUser.value = user
+
+            val activeArchive = repository.getSetting("active_archive_id")
+            _activeArchiveId.value = activeArchive
 
             updateAiState()
         }
@@ -489,7 +508,7 @@ class TalkSummaryViewModel(
         }
     }
 
-    fun parseAndImportBytes(bytes: ByteArray) {
+    fun parseAndImportBytes(bytes: ByteArray, fileName: String? = null) {
         if (_isProcessing.value) {
             showToast("지금 진행 중인 작업이 끝난 뒤에 다시 눌러주세요.", "info")
             return
@@ -539,6 +558,48 @@ class TalkSummaryViewModel(
                     )
                 }
 
+                // Step 3: Archive creation & internal storage caching
+                val archiveId = java.util.UUID.randomUUID().toString()
+                val archivesDir = File(getApplication<Application>().filesDir, "archives").apply { mkdirs() }
+                val cachedFile = File(archivesDir, "${archiveId}.txt")
+                withContext(Dispatchers.IO) {
+                    cachedFile.writeBytes(bytes)
+                }
+
+                val firstLines = withContext(Dispatchers.Default) {
+                    try {
+                        bytes.inputStream().bufferedReader().useLines { lines ->
+                            lines.take(6).toList()
+                        }
+                    } catch (_: Exception) {
+                        emptyList<String>()
+                    }
+                }
+                val allParticipants = parsed.values.flatten().map { it.sender.trim() }.distinct().filter { it.isNotBlank() }
+                val roomTitle = resolveArchiveRoomTitle(firstLines, fileName, allParticipants)
+                val sortedDates = parsed.keys.sorted()
+                val startDate = sortedDates.firstOrNull() ?: ""
+                val endDate = sortedDates.lastOrNull() ?: ""
+                val now = System.currentTimeMillis()
+
+                val archiveEntity = ChatArchiveEntity(
+                    id = archiveId,
+                    fileName = fileName ?: "카카오톡_대화.txt",
+                    roomTitle = roomTitle,
+                    importedAt = now,
+                    lastOpenedAt = now,
+                    startDate = startDate,
+                    endDate = endDate,
+                    totalDays = parsed.size,
+                    totalMessages = parsed.values.sumOf { it.size },
+                    topParticipantsJson = ChatArchiveMapper.participantsToJson(allParticipants.take(5)),
+                    internalFilePath = cachedFile.absolutePath,
+                    isFavorite = false
+                )
+                repository.insertArchive(archiveEntity)
+                _activeArchiveId.value = archiveId
+                repository.saveSetting("active_archive_id", archiveId)
+
                 selectChatDay(null)
                 backgroundTaskManager.completeTask("총 ${parsed.size}일간의 대화를 성공적으로 불러왔어요.")
                 showToast("대화를 성공적으로 불러왔어요!", "success")
@@ -558,6 +619,132 @@ class TalkSummaryViewModel(
                 _isProcessing.value = false
             }
         }
+    }
+
+    fun setShowArchiveModal(show: Boolean) {
+        _showArchiveModal.value = show
+    }
+
+    fun toggleArchiveFavorite(archive: ChatArchiveEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateArchiveFavorite(archive.id, !archive.isFavorite)
+        }
+    }
+
+    fun updateArchiveTitle(archiveId: String, newTitle: String) {
+        val trimmed = newTitle.trim()
+        if (trimmed.isNotBlank()) {
+            viewModelScope.launch(Dispatchers.IO) {
+                repository.updateArchiveTitle(archiveId, trimmed)
+            }
+        }
+    }
+
+    fun deleteArchive(archive: ChatArchiveEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(archive.internalFilePath)
+                if (file.exists()) {
+                    file.delete()
+                }
+                repository.deleteArchive(archive.id)
+                if (_activeArchiveId.value == archive.id) {
+                    _activeArchiveId.value = null
+                    repository.saveSetting("active_archive_id", "")
+                }
+                showToast("'${archive.roomTitle}' 보관함에서 삭제되었어요.", "info")
+            } catch (e: Exception) {
+                AppLogger.e("TalkSummaryViewModel", "Failed to delete archive: ${e.message}")
+                showToast("삭제 중 오류가 발생했어요: ${e.message}", "error")
+            }
+        }
+    }
+
+    fun loadArchive(archive: ChatArchiveEntity) {
+        if (_isProcessing.value) {
+            showToast("지금 진행 중인 작업이 끝난 뒤에 다시 눌러주세요.", "info")
+            return
+        }
+        _showArchiveModal.value = false
+        _isProcessing.value = true
+
+        viewModelScope.launch {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.PARSE_CHAT,
+                title = "보관된 대화 불러오는 중",
+                detail = "'${archive.roomTitle}' 대화를 열고 있어요...",
+                isIndeterminate = true,
+                isCancellable = false
+            )
+            InferenceForegroundService.start(getApplication(), "⚡ 대화방 전환 중", "'${archive.roomTitle}' 대화를 열고 있어요...")
+
+            try {
+                val file = File(archive.internalFilePath)
+                if (!file.exists()) {
+                    backgroundTaskManager.failTask("보관된 대화 파일을 찾을 수 없어요.")
+                    showError("파일 없음", "보관된 대화 파일이 기기에서 삭제되었거나 찾을 수 없어요.")
+                    return@launch
+                }
+
+                val bytes = withContext(Dispatchers.IO) {
+                    file.readBytes()
+                }
+
+                val parsed = withContext(Dispatchers.Default) {
+                    KakaoTalkParser.parseFromBytes(bytes)
+                }
+
+                if (parsed.isEmpty()) {
+                    backgroundTaskManager.failTask("대화 내용을 불러오지 못했어요.")
+                    showError("불러오기 오류", "대화 파일 형식을 해석하지 못했어요.")
+                    return@launch
+                }
+
+                repository.clearAll()
+                repository.saveChatDays(parsed)
+
+                val now = System.currentTimeMillis()
+                repository.updateArchiveLastOpened(archive.id, now)
+                _activeArchiveId.value = archive.id
+                repository.saveSetting("active_archive_id", archive.id)
+
+                selectChatDay(null)
+                backgroundTaskManager.completeTask("'${archive.roomTitle}' 대화방을 열었어요.")
+                showToast("'${archive.roomTitle}' 대화방으로 전환되었어요!", "success")
+            } catch (e: Exception) {
+                AppLogger.e("TalkSummaryViewModel", "Error loading archive", e)
+                backgroundTaskManager.failTask("대화 불러오기 오류: ${e.localizedMessage}")
+                showError("대화 불러오기 오류", "대화를 여는 중 문제가 발생했어요: ${e.localizedMessage}")
+            } finally {
+                InferenceForegroundService.stop(getApplication())
+                _isProcessing.value = false
+            }
+        }
+    }
+
+    private fun resolveArchiveRoomTitle(
+        firstLines: List<String>,
+        fileName: String?,
+        topParticipants: List<String>
+    ): String {
+        for (line in firstLines) {
+            val trimmed = line.trim()
+            if (trimmed.contains("카카오톡 대화")) {
+                val cleaned = trimmed
+                    .replace(Regex("님과\\s*카카오톡\\s*대화.*"), "")
+                    .replace(Regex("카카오톡\\s*대화.*"), "")
+                    .trim()
+                if (cleaned.isNotBlank()) return cleaned
+            }
+        }
+        if (topParticipants.isNotEmpty()) {
+            val names = topParticipants.take(3).joinToString(", ")
+            return if (topParticipants.size > 3) "$names 외 대화방" else "$names 대화방"
+        }
+        if (!fileName.isNullOrBlank()) {
+            return fileName.removeSuffix(".txt")
+        }
+        return "카카오톡 대화방"
     }
 
     fun clearAllData() {

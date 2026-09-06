@@ -66,10 +66,12 @@ import com.example.model.TalkStoryResult
 import com.example.model.WebtoonStoryResult
 import com.example.ui.components.TalkStoryCarouselDialog
 import com.example.ui.components.TalkAnalysisReportDialog
+import com.example.ui.components.ChatArchiveListDialog
 import com.example.data.parser.ChatAnalyticsEngine
 import com.example.ui.util.AvatarColorUtils
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import java.io.File
 import java.util.*
 
@@ -102,6 +104,26 @@ private fun shareDirectlyToKakaoTalk(context: Context, text: String, fallbackCho
         }
         context.startActivity(chooser)
     }
+}
+
+private fun getFileNameFromUri(context: Context, uri: Uri): String? {
+    var name: String? = null
+    if (uri.scheme == "content") {
+        try {
+            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (index != -1) {
+                        name = cursor.getString(index)
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
+    if (name.isNullOrBlank()) {
+        name = uri.lastPathSegment?.substringAfterLast('/')
+    }
+    return name
 }
 
 private data class DayCellData(
@@ -606,6 +628,9 @@ fun TalkSummaryMainScreen(
     // Modal visibilities
     val showSettings by viewModel.showSettings.collectAsStateWithLifecycle()
     val showPasteModal by viewModel.showPasteModal.collectAsStateWithLifecycle()
+    val showArchiveModal by viewModel.showArchiveModal.collectAsStateWithLifecycle()
+    val chatArchives by viewModel.chatArchives.collectAsStateWithLifecycle()
+    val activeArchiveId by viewModel.activeArchiveId.collectAsStateWithLifecycle()
     val showErrorDetails by viewModel.showErrorDetails.collectAsStateWithLifecycle()
     val errorTitle by viewModel.errorTitle.collectAsStateWithLifecycle()
     val errorDescription by viewModel.errorDescription.collectAsStateWithLifecycle()
@@ -626,9 +651,10 @@ fun TalkSummaryMainScreen(
     ) { uri ->
         if (uri != null) {
             try {
+                val fileName = getFileNameFromUri(context, uri) ?: "카카오톡_대화.txt"
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 if (bytes != null && bytes.isNotEmpty()) {
-                    viewModel.parseAndImportBytes(bytes)
+                    viewModel.parseAndImportBytes(bytes, fileName)
                 } else {
                     viewModel.showToast("파일 내용이 비어있거나 읽을 수 없습니다.", "error")
                 }
@@ -749,6 +775,20 @@ fun TalkSummaryMainScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                IconButton(
+                                    onClick = { viewModel.setShowArchiveModal(true) },
+                                    modifier = Modifier
+                                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+                                        .size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = "대화방 보관함",
+                                        tint = Color(0xFF4F46E5),
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+
                                 IconButton(
                                     onClick = { viewModel.setShowSettings(true) },
                                     modifier = Modifier
@@ -1058,6 +1098,28 @@ fun TalkSummaryMainScreen(
         if (showPrivacyModal) {
             PrivacyPeaceOfMindDialog(
                 onDismiss = { showPrivacyModal = false }
+            )
+        }
+
+        // Multi-Chatroom Storage & 1-Touch Switching Modal
+        if (showArchiveModal) {
+            ChatArchiveListDialog(
+                archives = chatArchives,
+                activeArchiveId = activeArchiveId,
+                onDismiss = { viewModel.setShowArchiveModal(false) },
+                onSelectArchive = { archive ->
+                    viewModel.loadArchive(archive)
+                },
+                onToggleFavorite = { archive ->
+                    viewModel.toggleArchiveFavorite(archive)
+                },
+                onDeleteArchive = { archive ->
+                    viewModel.deleteArchive(archive)
+                },
+                onImportNewFile = {
+                    viewModel.setShowArchiveModal(false)
+                    filePickerLauncher.launch("text/*")
+                }
             )
         }
 

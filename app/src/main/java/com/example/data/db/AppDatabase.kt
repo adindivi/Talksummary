@@ -56,14 +56,36 @@ interface SettingsDao {
     suspend fun clearAll()
 }
 
-@Database(entities = [ChatDayEntity::class, SettingEntity::class], version = 1, exportSchema = false)
+@Database(entities = [ChatDayEntity::class, SettingEntity::class, ChatArchiveEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun chatDayDao(): ChatDayDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun chatArchiveDao(): ChatArchiveDao
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `chat_archives` (
+                        `id` TEXT NOT NULL PRIMARY KEY,
+                        `fileName` TEXT NOT NULL,
+                        `roomTitle` TEXT NOT NULL,
+                        `importedAt` INTEGER NOT NULL,
+                        `lastOpenedAt` INTEGER NOT NULL,
+                        `startDate` TEXT NOT NULL,
+                        `endDate` TEXT NOT NULL,
+                        `totalDays` INTEGER NOT NULL,
+                        `totalMessages` INTEGER NOT NULL,
+                        `topParticipantsJson` TEXT NOT NULL,
+                        `internalFilePath` TEXT NOT NULL,
+                        `isFavorite` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
@@ -72,6 +94,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "TalkSummaryDB"
                 )
+                .addMigrations(MIGRATION_1_2)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
                 INSTANCE = instance
