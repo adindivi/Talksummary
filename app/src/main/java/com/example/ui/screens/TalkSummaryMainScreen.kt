@@ -63,6 +63,12 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
 
+private data class DayCellData(
+    val dayNumber: Int,
+    val isoDate: String,
+    val hasChat: Boolean
+)
+
 // Helpers for Date Arithmetic in Inline Date Range Picker
 private fun parseYearMonth(dateStr: String): Pair<Int, Int>? {
     if (dateStr.isEmpty()) return null
@@ -76,7 +82,9 @@ private fun parseYearMonth(dateStr: String): Pair<Int, Int>? {
 }
 
 private fun formatIsoDate(year: Int, month: Int, day: Int): String {
-    return String.format(Locale.US, "%04d-%02d-%02d", year, month, day)
+    val m = if (month < 10) "0$month" else "$month"
+    val d = if (day < 10) "0$day" else "$day"
+    return "$year-$m-$d"
 }
 
 private fun offsetDateIso(dateStr: String, dayOffset: Int): String {
@@ -108,9 +116,8 @@ fun InlineDateRangePicker(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val chatDatesSet = remember(chatDays) { chatDays.map { it.date }.toSet() }
-    val sortedChatDates = remember(chatDays) { chatDays.map { it.date }.sorted() }
-    val latestChatDate = sortedChatDates.lastOrNull() ?: ""
+    val chatDatesSet = remember(chatDays) { chatDays.mapTo(HashSet(chatDays.size)) { it.date } }
+    val latestChatDate = remember(chatDays) { chatDays.maxOfOrNull { it.date } ?: "" }
 
     val initialYearMonth = remember(selectedStartDate, latestChatDate) {
         parseYearMonth(selectedStartDate)
@@ -284,17 +291,32 @@ fun InlineDateRangePicker(
             }
         }
 
-        // Days Grid for currentYear & currentMonth
-        val cal = remember(currentYear, currentMonth) {
-            Calendar.getInstance().apply {
+        // Days Grid for currentYear & currentMonth (Precomputed single-pass memoization)
+        val dayCells = remember(currentYear, currentMonth, chatDatesSet) {
+            val cal = Calendar.getInstance().apply {
                 set(currentYear, currentMonth - 1, 1)
             }
+            val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+            val leadingEmptyCount = firstDayOfWeek - 1
+            val maxDaysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            val totalCells = leadingEmptyCount + maxDaysInMonth
+            val numRows = (totalCells + 6) / 7
+
+            List(numRows * 7) { index ->
+                val dayNumber = index - leadingEmptyCount + 1
+                if (dayNumber in 1..maxDaysInMonth) {
+                    val isoDate = formatIsoDate(currentYear, currentMonth, dayNumber)
+                    DayCellData(
+                        dayNumber = dayNumber,
+                        isoDate = isoDate,
+                        hasChat = chatDatesSet.contains(isoDate)
+                    )
+                } else {
+                    null
+                }
+            }
         }
-        val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-        val leadingEmptyCount = firstDayOfWeek - 1
-        val maxDaysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val totalCells = leadingEmptyCount + maxDaysInMonth
-        val numRows = (totalCells + 6) / 7
+        val numRows = dayCells.size / 7
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -307,15 +329,16 @@ fun InlineDateRangePicker(
                 ) {
                     for (col in 0 until 7) {
                         val cellIndex = row * 7 + col
-                        val dayNumber = cellIndex - leadingEmptyCount + 1
+                        val cellData = dayCells.getOrNull(cellIndex)
 
-                        if (dayNumber in 1..maxDaysInMonth) {
-                            val isoDate = formatIsoDate(currentYear, currentMonth, dayNumber)
+                        if (cellData != null) {
+                            val isoDate = cellData.isoDate
+                            val dayNumber = cellData.dayNumber
+                            val hasChat = cellData.hasChat
                             val isStart = tempStart.isNotEmpty() && isoDate == tempStart
                             val isEnd = tempEnd.isNotEmpty() && isoDate == tempEnd
                             val isInRange = tempStart.isNotEmpty() && tempEnd.isNotEmpty() &&
                                     isoDate > tempStart && isoDate < tempEnd
-                            val hasChat = chatDatesSet.contains(isoDate)
 
                             Box(
                                 modifier = Modifier
@@ -1445,8 +1468,18 @@ fun TimelineColumn(
                     // Inline Expandable Date Range Picker (Accordion, No-Modal)
                     AnimatedVisibility(
                         visible = isCalendarExpanded,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
+                        enter = expandVertically(
+                            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                            expandFrom = Alignment.Top
+                        ) + fadeIn(
+                            animationSpec = tween(durationMillis = 180)
+                        ),
+                        exit = shrinkVertically(
+                            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                            shrinkTowards = Alignment.Top
+                        ) + fadeOut(
+                            animationSpec = tween(durationMillis = 140)
+                        )
                     ) {
                         InlineDateRangePicker(
                             chatDays = allChatDays,
