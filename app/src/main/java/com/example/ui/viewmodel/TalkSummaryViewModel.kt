@@ -655,23 +655,49 @@ class TalkSummaryViewModel(
         return if (filtered.isNotEmpty()) filtered else messages
     }
 
+    companion object {
+        /**
+         * Cleans AI generated summary output by trimming code blocks and removing accidental bracket headers.
+         */
+        fun cleanAiSummaryOutput(raw: String): String {
+            var text = raw.trim()
+                .removePrefix("```markdown")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+
+            // Strip bracket headers e.g. "1. [배경 및 주제: ...]" or "1. [핵심 내용: ...]"
+            val bracketLabelRegex = Regex("""(?m)^(\s*\d+\.\s*)\[(?:배경|주제|핵심|결론|상황|내용|요약)[^\]]*:\s*([^\]]+)\]""")
+            text = bracketLabelRegex.replace(text) { matchResult ->
+                "${matchResult.groupValues[1]}${matchResult.groupValues[2].trim()}"
+            }
+            // Also strip any plain bracket wrapper e.g. "1. [내용]" -> "1. 내용"
+            val plainBracketRegex = Regex("""(?m)^(\s*\d+\.\s*)\[([^\]\n]+)\]\s*${'$'}""")
+            text = plainBracketRegex.replace(text) { matchResult ->
+                "${matchResult.groupValues[1]}${matchResult.groupValues[2].trim()}"
+            }
+            return text.trim()
+        }
+    }
+
     fun buildLocalGgufPrompt(messages: List<Message>): String {
         val targetMessages = filterMeaningfulMessages(messages)
         val serialized = targetMessages.joinToString("\n") { "[${it.sender}]: ${it.text}" }
 
         return """
-다음 카카오톡 대화를 종합하여 기승전결이 있는 핵심 3줄로 요약하세요.
+다음 메신저 대화 내용을 바탕으로 누구나 이해하기 아주 쉽고 다정한 표현으로 핵심 대화 내용을 3줄로 요약해 주세요.
 
-[필수 규칙]
-1. 단순 사진/이모티콘 전송이나 단답형 인사는 무시하고, 실제 대화의 핵심 맥락에만 집중하세요.
-2. 개별 발화를 낱개로 나열하지 말고, 전체 대화의 '주제', '주요 내용', '결론이나 약속'을 종합하세요.
-3. 어색한 번역투 없이 자연스럽고 명료한 한국어 문장으로 서술하세요.
-4. 서론이나 부가 설명 없이 오직 아래 형식의 3줄만 번호(1., 2., 3.)로 출력하세요.
+[요약 작성 규칙]
+1. 대괄호([])나 '배경:', '주제:', '핵심:', '결론:' 같은 머리말 분류 라벨을 절대 붙이지 마세요.
+2. 발화자의 이름(예: OOO님이)과 구체적으로 어떤 상황이었는지 명확히 밝혀 온전한 서술형 문장(~했어요, ~부탁했어요, ~알려줬어요)으로 작성하세요.
+3. 1번 문장은 대화가 시작된 구체적 계기와 상황, 2번 문장은 대화자 간에 오고 간 주요 내용과 부탁, 3번 문장은 최종 마무리된 조치나 약속을 담으세요.
+4. 단순 인사말, 이모티콘, 사진 전송은 제외하고 실제 대화 맥락만 요약하세요.
+5. 앞뒤 인사말이나 사족 없이 오직 1., 2., 3. 세 줄만 번호로 출력하세요.
 
-[출력 형식]
-1. [배경 및 주제: 어떤 계기나 화제로 대화가 시작되었는지]
-2. [핵심 내용: 참여자들이 공유한 주요 내용이나 구체적 상황]
-3. [결론 및 향후 계획: 최종 결정 사항, 약속, 또는 대화의 마무리 상황]
+[모범 작성 예시]
+1. 연호님이 조립 부품 태그와 배터리 공구에 문제가 생겼다고 상황을 공유하며 교체를 요청했어요.
+2. 황보세웅님이 태그를 교체해 주었고, 연호님은 잦은 고장의 근본 원인을 파악해 달라고 부탁했어요.
+3. 황보세웅님이 교체를 완료한 후, 배터리 공구 단선 문제도 함께 점검하여 해결하기로 약속했어요.
 
 [대화 내용]
 $serialized
@@ -775,7 +801,8 @@ $serialized
                 coroutineContext.ensureActive()
 
                 if (!responseText.isNullOrEmpty()) {
-                    val formatted = "[AI 정밀 요약]\n$responseText"
+                    val cleaned = cleanAiSummaryOutput(responseText)
+                    val formatted = "[AI 정밀 요약]\n$cleaned"
                     repository.updateSummary(chatDay.date, formatted)
                     
                     if (_selectedChatDay.value?.date == chatDay.date) {
@@ -873,7 +900,8 @@ $serialized
                         val result = requestGemini(prompt, key, _activeModel.value)
                         coroutineContext.ensureActive()
                         if (result != null) {
-                            val formatted = "[AI 정밀 요약]\n$result"
+                            val cleaned = cleanAiSummaryOutput(result)
+                            val formatted = "[AI 정밀 요약]\n$cleaned"
                             repository.updateSummary(item.date, formatted)
                             if (_selectedChatDay.value?.date == item.date) {
                                 _selectedChatDay.value = _selectedChatDay.value?.copy(summary = formatted)
@@ -1042,12 +1070,13 @@ $serialized
         val targetMessages = filterMeaningfulMessages(messages)
         val serialized = targetMessages.joinToString("\n") { "[${it.sender}]: ${it.text}" }
         return "요청 지시사항: 다음 메신저 대화 내용을 바탕으로 누구나(예: 어린아이, 초등학생도) 이해하기 아주 쉽고 다정한 표현으로 가독성 있게 핵심 대화 내용을 요약해 주세요.\n" +
+                "대괄호([])나 '배경:', '주제:', '핵심:', '결론:' 같은 머리말 분류 라벨은 절대 넣지 마세요.\n" +
+                "발화자의 이름(예: OOO님이)과 구체적인 행동/상황을 포함하여 부드러운 서술형 문장(~했어요, ~부탁했어요, ~알려줬어요)으로 작성하세요.\n" +
                 "단순 사진/이모티콘 전송이나 단답형 인사는 요약에서 완전히 제외하고 실제 대화 맥락만 요약하세요.\n" +
-                "인사말이나 부차적인 설명, 사족은 완벽히 생략하고 정확하게 '줄바꿈(\\n)' 표시가 들어간 딱 3줄로만 구성해 주시기 바랍니다.\n" +
-                "반드시 아래의 번호 형식(1., 2., 3.)을 지켜 전체 총 3줄로 작성하셔야 합니다:\n" +
-                "1. [매우 이해하기 쉬운 첫 번째 내용 요약: 대화 주제 및 배경]\n" +
-                "2. [매우 이해하기 쉬운 두 번째 내용 요약: 핵심 내용 및 논의]\n" +
-                "3. [매우 이해하기 쉬운 세 번째 내용 요약: 결론 및 약속/향후 계획]\n\n" +
+                "인사말이나 부차적인 설명, 사족은 완벽히 생략하고 정확하게 1., 2., 3. 세 줄 문장만 작성해 주시기 바랍니다:\n" +
+                "1. 대화가 시작된 구체적 계기와 상황\n" +
+                "2. 대화자 간에 오고 간 주요 논의와 부탁\n" +
+                "3. 최종 마무리된 조치 및 향후 약속/계획\n\n" +
                 serialized
     }
 

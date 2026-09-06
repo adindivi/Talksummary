@@ -1,5 +1,6 @@
 package com.example.data
 
+import com.example.ui.viewmodel.TalkSummaryViewModel
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -205,5 +206,39 @@ class ChatDayModelTest {
         assertEquals(2, y2025.daysCount)
         assertEquals(70, y2025.totalMessages)
         assertEquals(2, y2025.monthsCount)
+    }
+
+    @Test
+    fun cleanAiSummaryOutput_stripsBracketHeadersAndFencesCorrectly() {
+        val rawInput = """
+            ```markdown
+            1. [배경 및 주제: 조립 공구 불량 및 태그 교체]
+            2. [핵심 내용: 황보세웅님이 태그를 교체해 주었고, 원인 파악을 요청함]
+            3. [결론 및 향후 계획: 배터리 공구 단선 문제도 함께 점검하기로 함]
+            ```
+        """.trimIndent()
+
+        val cleaned = TalkSummaryViewModel.cleanAiSummaryOutput(rawInput)
+
+        val expected = """
+            1. 조립 공구 불량 및 태그 교체
+            2. 황보세웅님이 태그를 교체해 주었고, 원인 파악을 요청함
+            3. 배터리 공구 단선 문제도 함께 점검하기로 함
+        """.trimIndent()
+
+        assertEquals(expected, cleaned)
+    }
+
+    @Test
+    fun cleanAiSummaryOutput_preservesNaturalNarrativeSentences() {
+        val natural = """
+            1. 연호님이 조립 부품 태그와 배터리 공구에 문제가 생겼다고 상황을 공유하며 교체를 요청했어요.
+            2. 황보세웅님이 태그를 교체해 주었고, 연호님은 잦은 고장의 근본 원인을 파악해 달라고 부탁했어요.
+            3. 황보세웅님이 교체를 완료한 후, 배터리 공구 단선 문제도 함께 점검하여 해결하기로 약속했어요.
+        """.trimIndent()
+
+        val cleaned = TalkSummaryViewModel.cleanAiSummaryOutput(natural)
+
+        assertEquals(natural, cleaned)
     }
 }
