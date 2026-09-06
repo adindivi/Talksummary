@@ -1,4 +1,4 @@
-﻿package com.example.parser
+package com.example.parser
 
 import com.example.data.parser.KakaoTalkParser
 import org.junit.Assert.*
@@ -175,12 +175,95 @@ class KakaoTalkParserTest {
             [홍길동] [오후 1:00] 날짜 헤더 없는 메시지
         """.trimIndent()
 
+        // 1. Default fallback to today's date
         val result = KakaoTalkParser.parse(sample)
-
+        val expectedToday = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.KOREA).format(java.util.Date())
         assertEquals(1, result.size)
-        assertTrue(result.containsKey("2026-06-13"))
-        assertEquals("홍길동", result["2026-06-13"]!![0].sender)
-        assertEquals("날짜 헤더 없는 메시지", result["2026-06-13"]!![0].text)
+        assertTrue(result.containsKey(expectedToday))
+        assertEquals("홍길동", result[expectedToday]!![0].sender)
+        assertEquals("날짜 헤더 없는 메시지", result[expectedToday]!![0].text)
+
+        // 2. Custom fallback date
+        val customResult = KakaoTalkParser.parse(sample, fallbackDate = "2026-06-13")
+        assertTrue(customResult.containsKey("2026-06-13"))
+        assertEquals("홍길동", customResult["2026-06-13"]!![0].sender)
+    }
+
+    @Test
+    fun parse_messagesBeforeFirstDateHeader_attachesToFirstDate() {
+        val sample = """
+            [홍길동] [오전 9:30] 헤더 이전 선행 메시지
+            --------------- 2026년 7월 20일 월요일 ---------------
+            [이순신] [오전 10:00] 헤더 이후 메시지
+        """.trimIndent()
+
+        val result = KakaoTalkParser.parse(sample)
+        assertEquals(1, result.size)
+        assertTrue(result.containsKey("2026-07-20"))
+
+        val messages = result["2026-07-20"]!!
+        assertEquals(2, messages.size)
+        assertEquals("헤더 이전 선행 메시지", messages[0].text)
+        assertEquals("헤더 이후 메시지", messages[1].text)
+    }
+
+    @Test
+    fun parse_slashFormat_parsesCorrectly() {
+        val sample = """
+            --------------- 2026/08/15 ---------------
+            2026/08/15 오후 3:30, 김구 : 광복절 경축
+            [안중근] [오후 4:00] 대한독립만세
+        """.trimIndent()
+
+        val result = KakaoTalkParser.parse(sample)
+        assertEquals(1, result.size)
+        assertTrue(result.containsKey("2026-08-15"))
+
+        val messages = result["2026-08-15"]!!
+        assertEquals(2, messages.size)
+        assertEquals("김구", messages[0].sender)
+        assertEquals("안중근", messages[1].sender)
+    }
+
+    @Test
+    fun parse_pc24hAndMobile24hFormat_parsesCorrectly() {
+        val sample = """
+            --------------- 2026년 9월 1일 화요일 ---------------
+            [홍길동] [14:30] 24시간 PC 메시지
+            15:45, 이순신 : 24시간 모바일 메시지
+        """.trimIndent()
+
+        val result = KakaoTalkParser.parse(sample)
+        assertEquals(1, result.size)
+        assertTrue(result.containsKey("2026-09-01"))
+
+        val messages = result["2026-09-01"]!!
+        assertEquals(2, messages.size)
+        assertEquals("홍길동", messages[0].sender)
+        assertEquals("14:30", messages[0].time)
+        assertEquals("24시간 PC 메시지", messages[0].text)
+
+        assertEquals("이순신", messages[1].sender)
+        assertEquals("15:45", messages[1].time)
+        assertEquals("24시간 모바일 메시지", messages[1].text)
+    }
+
+    @Test
+    fun parse_streamingSequence_parsesCorrectly() {
+        val lines = sequenceOf(
+            "--------------- 2026년 9월 2일 수요일 ---------------",
+            "[개발자] [오전 11:00] 스트리밍 시퀀스 첫 줄",
+            "스트리밍 시퀀스 멀티라인 줄바꿈",
+            "[기획자] [오전 11:05] 완벽하게 처리 완료!"
+        )
+
+        val result = KakaoTalkParser.parse(lines)
+        assertEquals(1, result.size)
+        assertTrue(result.containsKey("2026-09-02"))
+
+        val messages = result["2026-09-02"]!!
+        assertEquals(2, messages.size)
+        assertTrue(messages[0].text.contains("스트리밍 시퀀스 멀티라인 줄바꿈"))
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.example.data
 
+import androidx.room.withTransaction
 import com.example.data.db.AppDatabase
 import com.example.data.db.ChatDayMapper
 import com.example.data.db.SettingEntity
@@ -35,39 +36,43 @@ class TalkSummaryRepository(private val db: AppDatabase) {
             }
         }
 
-        // Step 2: Perform DB transaction and insertions on Dispatchers.IO
+        // Step 2: Perform DB transaction and insertions in chunks on Dispatchers.IO
         withContext(Dispatchers.IO) {
-            precomputed.forEach { (date, messages, heuristic) ->
-                // Check if there's already an existing record for this date to preserve AI summaries!
-                val existing = db.chatDayDao().getChatDayByDate(date)
-                var summary = ""
-                var keywords = emptyList<String>()
-                var participants = emptyList<String>()
+            precomputed.chunked(500).forEach { batch ->
+                db.withTransaction {
+                    batch.forEach { (date, messages, heuristic) ->
+                        // Check if there's already an existing record for this date to preserve AI summaries!
+                        val existing = db.chatDayDao().getChatDayByDate(date)
+                        var summary = ""
+                        var keywords = emptyList<String>()
+                        var participants = emptyList<String>()
 
-                if (existing != null) {
-                    summary = existing.summary
-                    // Parse existing keywords and participants
-                    val mapped = ChatDayMapper.fromEntity(existing)
-                    keywords = mapped.keywords
-                    participants = mapped.participants
+                        if (existing != null) {
+                            summary = existing.summary
+                            // Parse existing keywords and participants
+                            val mapped = ChatDayMapper.fromEntity(existing)
+                            keywords = mapped.keywords
+                            participants = mapped.participants
+                        }
+
+                        if (summary.isEmpty() || (!summary.contains("AI") && !summary.contains("요약"))) {
+                            // Use precomputed heuristic summary if no existing AI summary
+                            summary = heuristic.text
+                            keywords = heuristic.keywords
+                            participants = heuristic.participants
+                        }
+
+                        val entity = ChatDayMapper.toEntity(
+                            date = date,
+                            messages = messages,
+                            summary = summary,
+                            keywords = keywords,
+                            participants = participants,
+                            msgCount = messages.size
+                        )
+                        db.chatDayDao().insertChatDay(entity)
+                    }
                 }
-
-                if (summary.isEmpty() || (!summary.contains("AI") && !summary.contains("요약"))) {
-                    // Use precomputed heuristic summary if no existing AI summary
-                    summary = heuristic.text
-                    keywords = heuristic.keywords
-                    participants = heuristic.participants
-                }
-
-                val entity = ChatDayMapper.toEntity(
-                    date = date,
-                    messages = messages,
-                    summary = summary,
-                    keywords = keywords,
-                    participants = participants,
-                    msgCount = messages.size
-                )
-                db.chatDayDao().insertChatDay(entity)
             }
         }
     }

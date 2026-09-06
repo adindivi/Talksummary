@@ -1,34 +1,53 @@
 package com.example.data.parser
 
 import com.example.data.Message
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.regex.Pattern
 
 object KakaoTalkParser {
 
     // Inline patterns (date and time are embedded in the message line)
-    private val fullKoreanInlinePattern = Pattern.compile("^(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일\\s*(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
-    private val exportInlinePatternAMPM = Pattern.compile("^(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?\\s*(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
-    private val exportInlinePattern = Pattern.compile("^(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val fullKoreanInlinePattern = Pattern.compile("^(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일\\s*(?:[월화수목금토일]요일\\s*)?(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val fullKoreanInlinePattern24h = Pattern.compile("^(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일\\s*(?:[월화수목금토일]요일\\s*)?(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val exportInlinePatternAMPM = Pattern.compile("^(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?\\s*,?\\s*(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val exportInlinePattern = Pattern.compile("^(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.?\\s*,?\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val slashInlinePatternAMPM = Pattern.compile("^(\\d{4})/(\\d{1,2})/(\\d{1,2})\\.?\\s*,?\\s*(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val slashInlinePattern = Pattern.compile("^(\\d{4})/(\\d{1,2})/(\\d{1,2})\\.?\\s*,?\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val hyphenInlinePatternAMPM = Pattern.compile("^(\\d{4})-(\\d{1,2})-(\\d{1,2})\\s*,?\\s*(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val hyphenInlinePattern = Pattern.compile("^(\\d{4})-(\\d{1,2})-(\\d{1,2})\\s*,?\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
 
     // Date headers (stripped of hyphens `-` before matching)
     private val dateHeaderPattern1 = Pattern.compile("^(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일")
     private val dateHeaderPattern2 = Pattern.compile("^(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})")
     private val dateHeaderPattern3 = Pattern.compile("^(\\d{4})\\s*년\\s*(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일")
     private val dateHeaderPattern4 = Pattern.compile("^(\\d{4})-(\\d{1,2})-(\\d{1,2})")
+    private val dateHeaderPatternSlash = Pattern.compile("^(\\d{4})/(\\d{1,2})/(\\d{1,2})")
     private val savedDateHeaderPattern1 = Pattern.compile("저장한\\s+날짜\\s*:\\s*(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})")
     private val savedDateHeaderPattern2 = Pattern.compile("저장한\\s+날짜\\s*:\\s*(\\d{4})년\\s*(\\d{1,2})월\\s*(\\d{1,2})일")
+    private val savedDateHeaderPattern3 = Pattern.compile("저장한\\s+날짜\\s*:\\s*(\\d{4})/(\\d{1,2})/(\\d{1,2})")
+    private val savedDateHeaderPattern4 = Pattern.compile("저장한\\s+날짜\\s*:\\s*(\\d{4})-(\\d{1,2})-(\\d{1,2})")
 
     // English date headers
-    private val enDateHeader = Pattern.compile("^([a-zA-Z]+)\\s*(\\d{1,2}),\\s*(\\d{4})")
-    private val enSavedDateHeader = Pattern.compile("Saved\\s+on\\s*([a-zA-Z]+)\\s*(\\d{1,2}),\\s*(\\d{4})")
+    private val enDateHeader = Pattern.compile("^([a-zA-Z]+)\\s*(\\d{1,2}),?\\s*(\\d{4})")
+    private val enDateHeaderDayFirst = Pattern.compile("^(\\d{1,2})\\s+([a-zA-Z]+),?\\s*(\\d{4})")
+    private val enSavedDateHeader = Pattern.compile("Saved\\s+on\\s*([a-zA-Z]+)\\s*(\\d{1,2}),?\\s*(\\d{4})")
 
     // Standalone message patterns (rely on pre-established or fallback currentDateStr)
     private val pcMsgPattern = Pattern.compile("^\\[([^\\]]+)\\]\\s*\\[(오전|오후|AM|PM)\\s*(\\d{1,2}):(\\d{2})\\]\\s*(.*)")
+    private val pc24hMsgPattern = Pattern.compile("^\\[([^\\]]+)\\]\\s*\\[(\\d{1,2}):(\\d{2})\\]\\s*(.*)")
     private val mobileStandardPattern = Pattern.compile("^(오전|오후)\\s*(\\d{1,2}):(\\d{2})\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
+    private val mobile24hPattern = Pattern.compile("^(\\d{1,2}):(\\d{2})\\s*,\\s*([^:]+)\\s*:\\s*(.*)")
     private val enMobileStandardPattern = Pattern.compile("^(\\d{1,2}):(\\d{2})\\s*(AM|PM)\\s*,?\\s*([^:]+)\\s*:\\s*(.*)")
 
+    private fun getTodayDateString(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA)
+        return sdf.format(Date())
+    }
+
     private fun parseEnglishMonth(mName: String?): String {
-        val name = (mName ?: "").lowercase()
+        val name = (mName ?: "").lowercase(Locale.ROOT)
         return when {
             name.startsWith("jan") -> "1"
             name.startsWith("feb") -> "2"
@@ -49,14 +68,14 @@ object KakaoTalkParser {
     /**
      * Decode files using smart multi-charset verification to prevent garbled text imports!
      */
-    fun parseFromBytes(bytes: ByteArray): Map<String, List<Message>> {
+    fun parseFromBytes(bytes: ByteArray, fallbackDate: String? = null): Map<String, List<Message>> {
         val encodings = listOf("UTF-8", "EUC-KR", "UTF-16", "MS949", "UTF-16LE", "UTF-16BE")
-        
+
         // Try each encoding and return the first one that successfully parses messages.
         for (encoding in encodings) {
             try {
                 val decoded = String(bytes, charset(encoding)).replace("\uFEFF", "")
-                val result = parse(decoded)
+                val result = parse(decoded, fallbackDate)
                 if (result.isNotEmpty()) {
                     return result
                 }
@@ -64,22 +83,35 @@ object KakaoTalkParser {
                 // Ignore and continue
             }
         }
-        
+
         // Final fallback: standard raw parsing from UTF-8
         try {
             val decodedUtf8 = String(bytes, Charsets.UTF_8).replace("\uFEFF", "")
-            return parse(decodedUtf8)
+            return parse(decodedUtf8, fallbackDate)
         } catch (e: Exception) {
             // ignore
         }
         return emptyMap()
     }
 
-    fun parse(content: String): Map<String, List<Message>> {
+    fun parse(content: String, fallbackDate: String? = null): Map<String, List<Message>> {
+        return parse(content.lineSequence(), fallbackDate)
+    }
+
+    fun parse(lines: Sequence<String>, fallbackDate: String? = null): Map<String, List<Message>> {
         val chatDays = mutableMapOf<String, MutableList<Message>>()
-        val lines = content.split(Regex("\\r?\\n"))
-        
+        val pendingMessages = mutableListOf<Message>()
         var currentDateStr: String? = null
+
+        fun attachPendingMessagesTo(date: String) {
+            if (pendingMessages.isNotEmpty()) {
+                if (!chatDays.containsKey(date)) {
+                    chatDays[date] = mutableListOf()
+                }
+                chatDays[date]?.addAll(pendingMessages)
+                pendingMessages.clear()
+            }
+        }
 
         for (line in lines) {
             val trimmedLine = line.trim()
@@ -100,11 +132,34 @@ object KakaoTalkParser {
                 val mStr = month.padStart(2, '0')
                 val dStr = day.padStart(2, '0')
                 currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
 
                 if (!chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                    chatDays[currentDateStr] = mutableListOf()
                 }
-                chatDays[currentDateStr!!]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                chatDays[currentDateStr]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                continue
+            }
+
+            val fullKorean24hMatch = fullKoreanInlinePattern24h.matcher(trimmedLine)
+            if (fullKorean24hMatch.find()) {
+                val year = fullKorean24hMatch.group(1) ?: "2026"
+                val month = fullKorean24hMatch.group(2) ?: "01"
+                val day = fullKorean24hMatch.group(3) ?: "01"
+                val hour = fullKorean24hMatch.group(4) ?: "00"
+                val min = fullKorean24hMatch.group(5) ?: "00"
+                val senderName = (fullKorean24hMatch.group(6) ?: "알수없음").trim()
+                val msgText = fullKorean24hMatch.group(7) ?: ""
+
+                val mStr = month.padStart(2, '0')
+                val dStr = day.padStart(2, '0')
+                currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
+
+                if (!chatDays.containsKey(currentDateStr)) {
+                    chatDays[currentDateStr] = mutableListOf()
+                }
+                chatDays[currentDateStr]?.add(Message(senderName, "$hour:$min", msgText))
                 continue
             }
 
@@ -122,11 +177,12 @@ object KakaoTalkParser {
                 val mStr = month.padStart(2, '0')
                 val dStr = day.padStart(2, '0')
                 currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
 
                 if (!chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                    chatDays[currentDateStr] = mutableListOf()
                 }
-                chatDays[currentDateStr!!]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                chatDays[currentDateStr]?.add(Message(senderName, "$ampm $hour:$min", msgText))
                 continue
             }
 
@@ -143,11 +199,102 @@ object KakaoTalkParser {
                 val mStr = month.padStart(2, '0')
                 val dStr = day.padStart(2, '0')
                 currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
 
                 if (!chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                    chatDays[currentDateStr] = mutableListOf()
                 }
-                chatDays[currentDateStr!!]?.add(Message(senderName, "$hour:$min", msgText))
+                chatDays[currentDateStr]?.add(Message(senderName, "$hour:$min", msgText))
+                continue
+            }
+
+            val slashAMPM = slashInlinePatternAMPM.matcher(trimmedLine)
+            if (slashAMPM.find()) {
+                val year = slashAMPM.group(1) ?: "2026"
+                val month = slashAMPM.group(2) ?: "01"
+                val day = slashAMPM.group(3) ?: "01"
+                val ampm = slashAMPM.group(4) ?: "오전"
+                val hour = slashAMPM.group(5) ?: "00"
+                val min = slashAMPM.group(6) ?: "00"
+                val senderName = (slashAMPM.group(7) ?: "알수없음").trim()
+                val msgText = slashAMPM.group(8) ?: ""
+
+                val mStr = month.padStart(2, '0')
+                val dStr = day.padStart(2, '0')
+                currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
+
+                if (!chatDays.containsKey(currentDateStr)) {
+                    chatDays[currentDateStr] = mutableListOf()
+                }
+                chatDays[currentDateStr]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                continue
+            }
+
+            val slashMatch = slashInlinePattern.matcher(trimmedLine)
+            if (slashMatch.find()) {
+                val year = slashMatch.group(1) ?: "2026"
+                val month = slashMatch.group(2) ?: "01"
+                val day = slashMatch.group(3) ?: "01"
+                val hour = slashMatch.group(4) ?: "00"
+                val min = slashMatch.group(5) ?: "00"
+                val senderName = (slashMatch.group(6) ?: "알수없음").trim()
+                val msgText = slashMatch.group(7) ?: ""
+
+                val mStr = month.padStart(2, '0')
+                val dStr = day.padStart(2, '0')
+                currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
+
+                if (!chatDays.containsKey(currentDateStr)) {
+                    chatDays[currentDateStr] = mutableListOf()
+                }
+                chatDays[currentDateStr]?.add(Message(senderName, "$hour:$min", msgText))
+                continue
+            }
+
+            val hyphenAMPM = hyphenInlinePatternAMPM.matcher(trimmedLine)
+            if (hyphenAMPM.find()) {
+                val year = hyphenAMPM.group(1) ?: "2026"
+                val month = hyphenAMPM.group(2) ?: "01"
+                val day = hyphenAMPM.group(3) ?: "01"
+                val ampm = hyphenAMPM.group(4) ?: "오전"
+                val hour = hyphenAMPM.group(5) ?: "00"
+                val min = hyphenAMPM.group(6) ?: "00"
+                val senderName = (hyphenAMPM.group(7) ?: "알수없음").trim()
+                val msgText = hyphenAMPM.group(8) ?: ""
+
+                val mStr = month.padStart(2, '0')
+                val dStr = day.padStart(2, '0')
+                currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
+
+                if (!chatDays.containsKey(currentDateStr)) {
+                    chatDays[currentDateStr] = mutableListOf()
+                }
+                chatDays[currentDateStr]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                continue
+            }
+
+            val hyphenMatch = hyphenInlinePattern.matcher(trimmedLine)
+            if (hyphenMatch.find()) {
+                val year = hyphenMatch.group(1) ?: "2026"
+                val month = hyphenMatch.group(2) ?: "01"
+                val day = hyphenMatch.group(3) ?: "01"
+                val hour = hyphenMatch.group(4) ?: "00"
+                val min = hyphenMatch.group(5) ?: "00"
+                val senderName = (hyphenMatch.group(6) ?: "알수없음").trim()
+                val msgText = hyphenMatch.group(7) ?: ""
+
+                val mStr = month.padStart(2, '0')
+                val dStr = day.padStart(2, '0')
+                currentDateStr = "$year-$mStr-$dStr"
+                attachPendingMessagesTo(currentDateStr)
+
+                if (!chatDays.containsKey(currentDateStr)) {
+                    chatDays[currentDateStr] = mutableListOf()
+                }
+                chatDays[currentDateStr]?.add(Message(senderName, "$hour:$min", msgText))
                 continue
             }
 
@@ -175,6 +322,28 @@ object KakaoTalkParser {
                     val year = mSaved2.group(1) ?: "2026"
                     val month = mSaved2.group(2) ?: "01"
                     val day = mSaved2.group(3) ?: "01"
+                    currentDateStr = "${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
+                    matchedDate = true
+                }
+            }
+
+            if (!matchedDate) {
+                val mSaved3 = savedDateHeaderPattern3.matcher(cleanLine)
+                if (mSaved3.find()) {
+                    val year = mSaved3.group(1) ?: "2026"
+                    val month = mSaved3.group(2) ?: "01"
+                    val day = mSaved3.group(3) ?: "01"
+                    currentDateStr = "${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
+                    matchedDate = true
+                }
+            }
+
+            if (!matchedDate) {
+                val mSaved4 = savedDateHeaderPattern4.matcher(cleanLine)
+                if (mSaved4.find()) {
+                    val year = mSaved4.group(1) ?: "2026"
+                    val month = mSaved4.group(2) ?: "01"
+                    val day = mSaved4.group(3) ?: "01"
                     currentDateStr = "${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
                     matchedDate = true
                 }
@@ -224,6 +393,17 @@ object KakaoTalkParser {
                 }
             }
 
+            if (!matchedDate) {
+                val mSlash = dateHeaderPatternSlash.matcher(cleanLine)
+                if (mSlash.find()) {
+                    val year = mSlash.group(1) ?: "2026"
+                    val month = mSlash.group(2) ?: "01"
+                    val day = mSlash.group(3) ?: "01"
+                    currentDateStr = "${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
+                    matchedDate = true
+                }
+            }
+
             // Check English date headers
             if (!matchedDate) {
                 val mEnSaved = enSavedDateHeader.matcher(cleanLine)
@@ -249,77 +429,152 @@ object KakaoTalkParser {
                 }
             }
 
+            if (!matchedDate) {
+                val mEnDayFirst = enDateHeaderDayFirst.matcher(cleanLine)
+                if (mEnDayFirst.find()) {
+                    val day = mEnDayFirst.group(1) ?: "01"
+                    val mName = mEnDayFirst.group(2)
+                    val year = mEnDayFirst.group(3) ?: "2026"
+                    val month = parseEnglishMonth(mName)
+                    currentDateStr = "${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}"
+                    matchedDate = true
+                }
+            }
+
             if (matchedDate) {
-                if (currentDateStr != null && !chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                if (currentDateStr != null) {
+                    attachPendingMessagesTo(currentDateStr)
+                    if (!chatDays.containsKey(currentDateStr)) {
+                        chatDays[currentDateStr] = mutableListOf()
+                    }
                 }
                 continue
             }
 
-            // 3. Try standard message patterns (relying on currentDateStr or fallback)
+            // 3. Try standard message patterns (relying on currentDateStr or pending fallback)
             val pcMatch = pcMsgPattern.matcher(trimmedLine)
             if (pcMatch.find()) {
-                if (currentDateStr == null) {
-                    currentDateStr = "2026-06-13" // Safeguard Fallback Date
-                }
                 val senderName = (pcMatch.group(1) ?: "알수없음").trim()
                 val ampm = pcMatch.group(2) ?: "오전"
                 val hour = pcMatch.group(3) ?: "00"
                 val min = pcMatch.group(4) ?: "00"
                 val msgText = pcMatch.group(5) ?: ""
+                val msg = Message(senderName, "$ampm $hour:$min", msgText)
 
-                if (!chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                if (currentDateStr != null) {
+                    if (!chatDays.containsKey(currentDateStr)) {
+                        chatDays[currentDateStr] = mutableListOf()
+                    }
+                    chatDays[currentDateStr]?.add(msg)
+                } else {
+                    pendingMessages.add(msg)
                 }
-                chatDays[currentDateStr!!]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                continue
+            }
+
+            val pc24hMatch = pc24hMsgPattern.matcher(trimmedLine)
+            if (pc24hMatch.find()) {
+                val senderName = (pc24hMatch.group(1) ?: "알수없음").trim()
+                val hour = pc24hMatch.group(2) ?: "00"
+                val min = pc24hMatch.group(3) ?: "00"
+                val msgText = pc24hMatch.group(4) ?: ""
+                val msg = Message(senderName, "$hour:$min", msgText)
+
+                if (currentDateStr != null) {
+                    if (!chatDays.containsKey(currentDateStr)) {
+                        chatDays[currentDateStr] = mutableListOf()
+                    }
+                    chatDays[currentDateStr]?.add(msg)
+                } else {
+                    pendingMessages.add(msg)
+                }
                 continue
             }
 
             val mobileMatch = mobileStandardPattern.matcher(trimmedLine)
             if (mobileMatch.find()) {
-                if (currentDateStr == null) {
-                    currentDateStr = "2026-06-13" // Safeguard Fallback Date
-                }
                 val ampm = mobileMatch.group(1) ?: "오전"
                 val hour = mobileMatch.group(2) ?: "00"
                 val min = mobileMatch.group(3) ?: "00"
                 val senderName = (mobileMatch.group(4) ?: "알수없음").trim()
                 val msgText = mobileMatch.group(5) ?: ""
+                val msg = Message(senderName, "$ampm $hour:$min", msgText)
 
-                if (!chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                if (currentDateStr != null) {
+                    if (!chatDays.containsKey(currentDateStr)) {
+                        chatDays[currentDateStr] = mutableListOf()
+                    }
+                    chatDays[currentDateStr]?.add(msg)
+                } else {
+                    pendingMessages.add(msg)
                 }
-                chatDays[currentDateStr!!]?.add(Message(senderName, "$ampm $hour:$min", msgText))
+                continue
+            }
+
+            val mobile24hMatch = mobile24hPattern.matcher(trimmedLine)
+            if (mobile24hMatch.find()) {
+                val hour = mobile24hMatch.group(1) ?: "00"
+                val min = mobile24hMatch.group(2) ?: "00"
+                val senderName = (mobile24hMatch.group(3) ?: "알수없음").trim()
+                val msgText = mobile24hMatch.group(4) ?: ""
+                val msg = Message(senderName, "$hour:$min", msgText)
+
+                if (currentDateStr != null) {
+                    if (!chatDays.containsKey(currentDateStr)) {
+                        chatDays[currentDateStr] = mutableListOf()
+                    }
+                    chatDays[currentDateStr]?.add(msg)
+                } else {
+                    pendingMessages.add(msg)
+                }
                 continue
             }
 
             val enMobileMatch = enMobileStandardPattern.matcher(trimmedLine)
             if (enMobileMatch.find()) {
-                if (currentDateStr == null) {
-                    currentDateStr = "2026-06-13" // Safeguard Fallback Date
-                }
                 val hour = enMobileMatch.group(1) ?: "00"
                 val min = enMobileMatch.group(2) ?: "00"
                 val ampm = enMobileMatch.group(3) ?: "AM"
                 val senderName = (enMobileMatch.group(4) ?: "알수없음").trim()
                 val msgText = enMobileMatch.group(5) ?: ""
+                val msg = Message(senderName, "$ampm $hour:$min", msgText)
 
-                if (!chatDays.containsKey(currentDateStr)) {
-                    chatDays[currentDateStr!!] = mutableListOf()
+                if (currentDateStr != null) {
+                    if (!chatDays.containsKey(currentDateStr)) {
+                        chatDays[currentDateStr] = mutableListOf()
+                    }
+                    chatDays[currentDateStr]?.add(msg)
+                } else {
+                    pendingMessages.add(msg)
                 }
-                chatDays[currentDateStr!!]?.add(Message(senderName, "$ampm $hour:$min", msgText))
                 continue
             }
 
             // 4. Append as multi-line continuing content
-            if (currentDateStr != null && chatDays.containsKey(currentDateStr) && chatDays[currentDateStr!!]!!.isNotEmpty()) {
+            if (currentDateStr != null && chatDays.containsKey(currentDateStr) && chatDays[currentDateStr]?.isNotEmpty() == true) {
                 val isTimestampPrefix = trimmedLine.startsWith("오전") || trimmedLine.startsWith("오후") || trimmedLine.matches(Regex("^\\d{4}.*"))
                 if (!isTimestampPrefix) {
-                    val lastList = chatDays[currentDateStr!!]!!
+                    val lastList = chatDays[currentDateStr]!!
                     val lastMsg = lastList.last()
                     lastList[lastList.size - 1] = lastMsg.copy(text = lastMsg.text + "\n" + trimmedLine)
                 }
+            } else if (pendingMessages.isNotEmpty()) {
+                val isTimestampPrefix = trimmedLine.startsWith("오전") || trimmedLine.startsWith("오후") || trimmedLine.matches(Regex("^\\d{4}.*"))
+                if (!isTimestampPrefix) {
+                    val lastMsg = pendingMessages.last()
+                    pendingMessages[pendingMessages.size - 1] = lastMsg.copy(text = lastMsg.text + "\n" + trimmedLine)
+                }
             }
+        }
+
+        // If there are pending messages that never met a subsequent date header, assign them to fallback date
+        if (pendingMessages.isNotEmpty()) {
+            val finalFallback = fallbackDate ?: getTodayDateString()
+            if (!chatDays.containsKey(finalFallback)) {
+                chatDays[finalFallback] = mutableListOf()
+            }
+            chatDays[finalFallback]?.addAll(pendingMessages)
+            pendingMessages.clear()
         }
 
         // Filter out any days that have 0 messages

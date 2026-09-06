@@ -1041,29 +1041,62 @@ $serialized
             contents = listOf(ApiContent(parts = listOf(ApiPart(text = prompt)))),
             generationConfig = GenerationConfig(temperature = 0.5f)
         )
-        try {
-            AppLogger.d("TalkSummaryViewModel", "Requesting Gemini with model $realModel and prompt length: ${prompt.length}")
-            val response = GeminiApiClient.service.generateContent(
-                model = realModel,
-                apiKey = apiKey,
-                request = request
-            )
-            val resultText = response.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            AppLogger.d("TalkSummaryViewModel", "Gemini response executed successfully.")
-            _lastErrorInfo.value = null
-            resultText
-        } catch (e: retrofit2.HttpException) {
-            val rawError = e.response()?.errorBody()?.string() ?: ""
-            AppLogger.e("TalkSummaryViewModel", "Gemini HTTP error ${e.code()}: $rawError")
-            val errorInfo = com.example.data.api.GeminiErrorClassifier.classify(e.code(), rawError)
-            _lastErrorInfo.value = errorInfo
-            null
-        } catch (e: Exception) {
-            AppLogger.e("TalkSummaryViewModel", "Gemini request failed: ${e.message}", e)
-            val errorInfo = com.example.data.api.GeminiErrorClassifier.classifyException(e)
-            _lastErrorInfo.value = errorInfo
-            null
+        val maxRetries = 3
+        var attempt = 0
+        while (attempt < maxRetries) {
+            try {
+                AppLogger.d("TalkSummaryViewModel", "Requesting Gemini (attempt $attempt) with model $realModel and prompt length: ${prompt.length}")
+                val response = GeminiApiClient.service.generateContent(
+                    model = realModel,
+                    apiKey = apiKey,
+                    request = request
+                )
+                val resultText = response.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                AppLogger.d("TalkSummaryViewModel", "Gemini response executed successfully.")
+                _lastErrorInfo.value = null
+                return@withContext resultText
+            } catch (e: retrofit2.HttpException) {
+                val code = e.code()
+                val rawError = e.response()?.errorBody()?.string() ?: ""
+                AppLogger.e("TalkSummaryViewModel", "Gemini HTTP error $code (attempt $attempt): $rawError")
+                val isRetryable = code == 429 || code in 500..504
+                if (isRetryable && attempt < maxRetries - 1) {
+                    val delayMs = when (attempt) {
+                        0 -> 2500L
+                        1 -> 5000L
+                        else -> 10000L
+                    }
+                    AppLogger.w("TalkSummaryViewModel", "Transient HTTP error $code, retrying in ${delayMs}ms (attempt $attempt)...")
+                    delay(delayMs)
+                    attempt++
+                    continue
+                }
+                val errorInfo = com.example.data.api.GeminiErrorClassifier.classify(code, rawError)
+                _lastErrorInfo.value = errorInfo
+                return@withContext null
+            } catch (e: java.io.IOException) {
+                AppLogger.w("TalkSummaryViewModel", "Gemini network I/O error (attempt $attempt): ${e.message}")
+                if (attempt < maxRetries - 1) {
+                    val delayMs = when (attempt) {
+                        0 -> 2500L
+                        1 -> 5000L
+                        else -> 10000L
+                    }
+                    delay(delayMs)
+                    attempt++
+                    continue
+                }
+                val errorInfo = com.example.data.api.GeminiErrorClassifier.classifyException(e)
+                _lastErrorInfo.value = errorInfo
+                return@withContext null
+            } catch (e: Exception) {
+                AppLogger.e("TalkSummaryViewModel", "Gemini request failed: ${e.message}", e)
+                val errorInfo = com.example.data.api.GeminiErrorClassifier.classifyException(e)
+                _lastErrorInfo.value = errorInfo
+                return@withContext null
+            }
         }
+        null
     }
 
     private fun buildGeminiPrompt(messages: List<Message>): String {

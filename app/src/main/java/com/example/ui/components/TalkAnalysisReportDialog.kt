@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,8 +64,14 @@ fun TalkAnalysisReportDialog(
         ChatAnalyticsEngine.getAvailableYearMonths(chatDays)
     }
 
-    var selectedYearMonth by remember(initialYearMonth, availableMonths) {
+    var selectedYearMonth by rememberSaveable(key = "selectedYearMonth") {
         mutableStateOf(initialYearMonth ?: availableMonths.firstOrNull() ?: "")
+    }
+
+    LaunchedEffect(availableMonths) {
+        if (selectedYearMonth.isEmpty() || !availableMonths.contains(selectedYearMonth)) {
+            availableMonths.firstOrNull()?.let { selectedYearMonth = it }
+        }
     }
 
     val report = remember(selectedYearMonth, chatDays) {

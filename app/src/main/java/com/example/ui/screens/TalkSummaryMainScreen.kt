@@ -41,6 +41,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
@@ -622,8 +623,8 @@ fun TalkSummaryMainScreen(
     var showPermissionRationale by remember { mutableStateOf(false) }
     var showPrivacyModal by remember { mutableStateOf(false) }
     var activeStoryChatDay by remember { mutableStateOf<ChatDay?>(null) }
-    var showAnalysisReportModal by remember { mutableStateOf(false) }
-    var analysisInitialYearMonth by remember { mutableStateOf<String?>(null) }
+    var showAnalysisReportModal by rememberSaveable { mutableStateOf(false) }
+    var analysisInitialYearMonth by rememberSaveable { mutableStateOf<String?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
