@@ -2588,8 +2588,7 @@ fun ChatRoomScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(KakaoHeaderBg)
-                .then(if (isMobile) Modifier.statusBarsPadding() else Modifier)
-                .padding(horizontal = 8.dp, vertical = 3.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
