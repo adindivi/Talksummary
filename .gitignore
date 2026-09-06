@@ -19,3 +19,4 @@ debug.keystore
 *.py
 *.patch
 temp_*.txt
+screenshots/
