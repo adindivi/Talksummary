@@ -3357,42 +3357,148 @@ fun SettingsDialog(
                     } else {
                         // Local LLM Settings
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("내 폰 안의 오프라인 AI 모델 (llama.cpp)", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                            val context = LocalContext.current
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("내 폰 안의 오프라인 AI", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                                Text(
+                                    text = "허깅페이스 모델 받기 →",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF2563EB),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable {
+                                        try {
+                                            val intent = android.content.Intent(
+                                                android.content.Intent.ACTION_VIEW,
+                                                android.net.Uri.parse("https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF")
+                                            )
+                                            context.startActivity(intent)
+                                            onShowToast("Hugging Face 무료 AI 모델 페이지로 이동해요.", "info")
+                                        } catch (e: Exception) {
+                                            onShowToast("웹 브라우저를 열 수 없어요: ${e.message}", "error")
+                                        }
+                                    }
+                                )
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
                                     .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-                                    .padding(12.dp)
-                                    .clickable { onPickLocalModel() }
+                                    .padding(11.dp)
                             ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(
-                                        text = if (localPathText.isEmpty()) "📂 AI 모델 파일(.gguf) 선택하기" else "✅ AI 모델 준비 완료",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = if (localPathText.isEmpty()) Color.DarkGray else BrandGreenAccent
-                                    )
-                                    Text(
-                                        text = if (localPathText.isEmpty()) "기기에 저장된 .gguf AI 모델 파일을 선택해 주세요." else localPathText.substringAfterLast(File.separatorChar),
-                                        fontSize = 10.sp,
-                                        color = Color.Gray,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (loadedGgufMetadata != null) {
-                                        Spacer(modifier = Modifier.height(2.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    if (localPathText.isEmpty()) {
+                                        Text(
+                                            text = "인터넷이나 데이터 소모 없이 내 스마트폰 안에서 100% 무료로 동작해요.",
+                                            fontSize = 9.5.sp,
+                                            color = Color(0xFF64748B),
+                                            lineHeight = 14.sp
+                                        )
+
                                         Surface(
-                                            color = Color(0xFFE0F2FE),
-                                            shape = RoundedCornerShape(6.dp)
+                                            shape = RoundedCornerShape(999.dp),
+                                            color = Color(0xFFECFDF5),
+                                            border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(36.dp)
+                                                .clickable { onPickLocalModel() }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxSize(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.FolderOpen,
+                                                    contentDescription = "불러오기",
+                                                    tint = BrandGreenAccent,
+                                                    modifier = Modifier.size(15.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "내 폰의 AI 불러오기",
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF065F46)
+                                                )
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "💡 아직 AI 모델(.gguf 파일)이 없다면 우측 상단의 '허깅페이스 모델 받기'에서 Qwen2.5 등의 무료 모델을 스마트폰에 다운로드한 후 불러와 주세요.",
+                                            fontSize = 9.sp,
+                                            color = Color(0xFF94A3B8),
+                                            lineHeight = 13.5.sp
+                                        )
+                                    } else {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                text = "${loadedGgufMetadata.modelName} • ${loadedGgufMetadata.quantizationType.label} • ${loadedGgufMetadata.architecture.uppercase()} • ctx:${loadedGgufMetadata.contextLength}",
-                                                fontSize = 9.sp,
+                                                text = "✅ AI 모델 준비 완료",
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF0369A1),
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                fontSize = 11.sp,
+                                                color = BrandGreenAccent
                                             )
+                                            Surface(
+                                                shape = RoundedCornerShape(999.dp),
+                                                color = Color(0xFFF1F5F9),
+                                                border = BorderStroke(0.8.dp, Color(0xFFCBD5E1)),
+                                                modifier = Modifier
+                                                    .height(28.dp)
+                                                    .clickable { onPickLocalModel() }
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Refresh,
+                                                        contentDescription = "다시 불러오기",
+                                                        tint = BrandSlate,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                    Text(
+                                                        text = "내 폰의 AI 다시 불러오기",
+                                                        fontSize = 9.5.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = BrandSlate
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = localPathText.substringAfterLast(File.separatorChar),
+                                            fontSize = 10.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF334155),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+
+                                        if (loadedGgufMetadata != null) {
+                                            Surface(
+                                                color = Color(0xFFE0F2FE),
+                                                shape = RoundedCornerShape(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "${loadedGgufMetadata.modelName} • ${loadedGgufMetadata.quantizationType.label} • ${loadedGgufMetadata.architecture.uppercase()} • ctx:${loadedGgufMetadata.contextLength}",
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF0369A1),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
