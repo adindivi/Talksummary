@@ -36,9 +36,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -101,39 +98,7 @@ fun TalkAnalysisReportDialog(
         }
     }
 
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // If user has already dragged the modal downwards and is now dragging up
-                if (offsetY.value > 0f && available.y < 0) {
-                    val consumed = minOf(-available.y, offsetY.value)
-                    scope.launch { offsetY.snapTo(offsetY.value - consumed) }
-                    return Offset(0f, -consumed)
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                // When content is scrolled to the very top and user drags downwards
-                if (available.y > 0 && scrollState.value == 0) {
-                    scope.launch { offsetY.snapTo(offsetY.value + available.y * 0.7f) }
-                    return Offset(0f, available.y)
-                }
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                if (offsetY.value > 120f || available.y > 800f) {
-                    dismissWithAnimation()
-                    return available
-                } else if (offsetY.value > 0f) {
-                    offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                    return available
-                }
-                return Velocity.Zero
-            }
-        }
-    }
+    // Modal dismiss is limited to dragging the top handle and header area (dragModifier)
 
     val dragModifier = Modifier.draggable(
         orientation = Orientation.Vertical,
@@ -178,7 +143,6 @@ fun TalkAnalysisReportDialog(
                     .widthIn(max = 480.dp)
                     .heightIn(max = 700.dp)
                     .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                    .nestedScroll(nestedScrollConnection)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
