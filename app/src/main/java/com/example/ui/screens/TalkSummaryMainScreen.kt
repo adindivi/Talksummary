@@ -60,6 +60,11 @@ import com.example.service.TaskStatus
 import com.example.ui.viewmodel.TalkSummaryViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.data.parser.StoryGenerator
+import com.example.model.TalkStoryResult
+import com.example.ui.components.TalkStoryCarouselDialog
+import com.example.ui.util.AvatarColorUtils
+import android.content.Intent
 import java.io.File
 import java.util.*
 
@@ -614,6 +619,7 @@ fun TalkSummaryMainScreen(
     // Runtime Permission (Android 13+ Notification for AI Background Service)
     var showPermissionRationale by remember { mutableStateOf(false) }
     var showPrivacyModal by remember { mutableStateOf(false) }
+    var activeStoryChatDay by remember { mutableStateOf<ChatDay?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -794,7 +800,8 @@ fun TalkSummaryMainScreen(
                         modifier = Modifier.weight(timelineWeight),
                         onImportFileClick = { filePickerLauncher.launch("text/plain") },
                         onPasteTextClick = { viewModel.setShowPasteModal(true) },
-                        onOpenPrivacyModal = { showPrivacyModal = true }
+                        onOpenPrivacyModal = { showPrivacyModal = true },
+                        onOpenStory = { cd -> activeStoryChatDay = cd }
                     )
 
                     Box(
@@ -816,7 +823,8 @@ fun TalkSummaryMainScreen(
                                 onShowToast = { msg -> viewModel.showToast(msg, "info") },
                                 onShowPrivacyModal = { showPrivacyModal = true },
                                 onTriggerSummarize = { cd -> viewModel.triggerSingleSummarize(cd) },
-                                isSummarizing = activeSummarizingDate == selectedChatDay?.date
+                                isSummarizing = activeSummarizingDate == selectedChatDay?.date,
+                                onOpenStory = { cd -> activeStoryChatDay = cd }
                             )
                         } else {
                             Box(
@@ -887,7 +895,8 @@ fun TalkSummaryMainScreen(
                             modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
                             onImportFileClick = { filePickerLauncher.launch("text/plain") },
                             onPasteTextClick = { viewModel.setShowPasteModal(true) },
-                            onOpenPrivacyModal = { showPrivacyModal = true }
+                            onOpenPrivacyModal = { showPrivacyModal = true },
+                            onOpenStory = { cd -> activeStoryChatDay = cd }
                         )
                     } else {
                         ChatRoomScreen(
@@ -901,7 +910,8 @@ fun TalkSummaryMainScreen(
                             onShowToast = { msg -> viewModel.showToast(msg, "info") },
                             onShowPrivacyModal = { showPrivacyModal = true },
                             onTriggerSummarize = { cd -> viewModel.triggerSingleSummarize(cd) },
-                            isSummarizing = activeSummarizingDate == selectedChatDay?.date
+                            isSummarizing = activeSummarizingDate == selectedChatDay?.date,
+                            onOpenStory = { cd -> activeStoryChatDay = cd }
                         )
                     }
                 }
@@ -1002,6 +1012,27 @@ fun TalkSummaryMainScreen(
         if (showPrivacyModal) {
             PrivacyPeaceOfMindDialog(
                 onDismiss = { showPrivacyModal = false }
+            )
+        }
+
+        // 3-Card Instagram-style Cinematic Story Dialog
+        activeStoryChatDay?.let { chatDay ->
+            val storyResult = remember(chatDay) { StoryGenerator.generate3CardStory(chatDay) }
+            TalkStoryCarouselDialog(
+                storyResult = storyResult,
+                onDismiss = { activeStoryChatDay = null },
+                onShareStory = { story ->
+                    val shareText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n\n" +
+                        "1장: ${story.card1.title}\n${story.card1.story}\n\n" +
+                        "2장: ${story.card2.title}\n${story.card2.story}\n\n" +
+                        "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
+                        "#카카오톡대화요약 #스토리카드"
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(Intent.createChooser(sendIntent, "3장 스토리 카톡 공유"))
+                }
             )
         }
 
@@ -1214,7 +1245,8 @@ fun TimelineColumn(
     modifier: Modifier = Modifier,
     onImportFileClick: () -> Unit,
     onPasteTextClick: () -> Unit = {},
-    onOpenPrivacyModal: () -> Unit = {}
+    onOpenPrivacyModal: () -> Unit = {},
+    onOpenStory: (ChatDay) -> Unit = {}
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -1618,7 +1650,8 @@ fun TimelineColumn(
                                         onCopySummary = { text ->
                                             clipboardManager.setText(AnnotatedString(text))
                                             viewModel.showToast("대화 요약이 클립보드에 복사되었습니다.", "success")
-                                        }
+                                        },
+                                        onOpenStory = { onOpenStory(chatDay) }
                                     )
                                 }
                             }
@@ -1731,7 +1764,8 @@ fun TimelineItemCard(
     onCopySummary: (String) -> Unit = {},
     isSummarizing: Boolean = false,
     activeTask: TaskProgress? = null,
-    onCancelTask: () -> Unit = {}
+    onCancelTask: () -> Unit = {},
+    onOpenStory: () -> Unit = {}
 ) {
     val isAISummarized = chatDay.summary.startsWith("[AI 정밀 요약]")
 
@@ -2048,33 +2082,62 @@ fun TimelineItemCard(
                         }
                     }
                 } else {
-                    Button(
-                        onClick = onAIPress,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
-                            contentColor = if (isAISummarized) BrandSlate else Color.White
-                        ),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                        modifier = Modifier.height(30.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        // 3-Card Cinematic Story Carousel Trigger Button
+                        OutlinedButton(
+                            onClick = onOpenStory,
+                            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 0.dp),
+                            shape = RoundedCornerShape(999.dp),
+                            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF475569)
+                            ),
+                            modifier = Modifier.height(30.dp)
                         ) {
-                            Icon(
-                                imageVector = if (isAISummarized) Icons.Default.Refresh else Icons.Filled.Star,
-                                contentDescription = "요약 실행",
-                                tint = if (isAISummarized) BrandSlate else Color.White,
-                                modifier = Modifier.size(11.dp)
-                            )
-                            Text(
-                                text = if (isAISummarized) "다시 요약" else "AI 3줄 요약",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text("🎬", fontSize = 10.sp)
+                                Text(
+                                    text = "스토리",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = onAIPress,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
+                                contentColor = if (isAISummarized) BrandSlate else Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            shape = RoundedCornerShape(999.dp),
+                            border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isAISummarized) Icons.Default.Refresh else Icons.Filled.Star,
+                                    contentDescription = "요약 실행",
+                                    tint = if (isAISummarized) BrandSlate else Color.White,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = if (isAISummarized) "다시 요약" else "AI 3줄 요약",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -2496,7 +2559,8 @@ fun ChatRoomScreen(
     onShowToast: (String) -> Unit = {},
     onShowPrivacyModal: () -> Unit = {},
     onTriggerSummarize: ((ChatDay) -> Unit)? = null,
-    isSummarizing: Boolean = false
+    isSummarizing: Boolean = false,
+    onOpenStory: ((ChatDay) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -2784,6 +2848,31 @@ fun ChatRoomScreen(
                                         }
                                     }
 
+                                    if (onOpenStory != null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(Color(0xFFFEF3C7), RoundedCornerShape(999.dp))
+                                                .border(0.6.dp, Color(0xFFFDE68A), RoundedCornerShape(999.dp))
+                                                .clickable {
+                                                    onOpenStory(chatDay)
+                                                }
+                                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Text("🎬", fontSize = 9.sp)
+                                                Text(
+                                                    text = "스토리",
+                                                    fontSize = 9.sp,
+                                                    color = Color(0xFF92400E),
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     if (onTriggerSummarize != null && !isSummarizing) {
                                         Box(
                                             modifier = Modifier
@@ -2910,17 +2999,18 @@ fun ChatRoomScreen(
                 ) {
                     if (!isMe) {
                         if (showHeader) {
+                            val (avatarBg, avatarText) = AvatarColorUtils.getAvatarColors(msg.sender)
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
-                                    .background(getRandomAvatarBg(msg.sender), RoundedCornerShape(12.dp)),
+                                    .background(avatarBg, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = msg.sender.take(1),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
-                                    color = Color.White
+                                    color = avatarText
                                 )
                             }
                         } else {
