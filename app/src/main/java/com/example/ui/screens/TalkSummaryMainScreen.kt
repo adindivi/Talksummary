@@ -787,7 +787,9 @@ fun TalkSummaryMainScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 isMobile = false,
                                 onShowToast = { msg -> viewModel.showToast(msg, "info") },
-                                onShowPrivacyModal = { showPrivacyModal = true }
+                                onShowPrivacyModal = { showPrivacyModal = true },
+                                onTriggerSummarize = { cd -> viewModel.triggerSingleSummarize(cd) },
+                                isSummarizing = activeSummarizingDate == selectedChatDay?.date
                             )
                         } else {
                             Box(
@@ -870,7 +872,9 @@ fun TalkSummaryMainScreen(
                             modifier = Modifier.fillMaxSize(),
                             isMobile = true,
                             onShowToast = { msg -> viewModel.showToast(msg, "info") },
-                            onShowPrivacyModal = { showPrivacyModal = true }
+                            onShowPrivacyModal = { showPrivacyModal = true },
+                            onTriggerSummarize = { cd -> viewModel.triggerSingleSummarize(cd) },
+                            isSummarizing = activeSummarizingDate == selectedChatDay?.date
                         )
                     }
                 }
@@ -2369,12 +2373,19 @@ fun ChatRoomScreen(
     modifier: Modifier = Modifier,
     isMobile: Boolean = true,
     onShowToast: (String) -> Unit = {},
-    onShowPrivacyModal: () -> Unit = {}
+    onShowPrivacyModal: () -> Unit = {},
+    onTriggerSummarize: ((ChatDay) -> Unit)? = null,
+    isSummarizing: Boolean = false
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberLazyListState()
+
+    var isSummaryExpanded by remember { mutableStateOf(false) }
+    val isAISummarized = chatDay.summary.startsWith("[AI 정밀 요약]")
+    val cleanSummary = chatDay.summary.replace("[AI 정밀 요약]\n", "").trim()
+    val hasSummary = cleanSummary.isNotBlank()
 
     if (isMobile) {
         BackHandler(enabled = true) {
@@ -2387,13 +2398,13 @@ fun ChatRoomScreen(
             .fillMaxSize()
             .background(KakaoChatBg)
     ) {
-        // App header bar mimicking KakaoTalk Chatroom header
+        // App header bar mimicking KakaoTalk Chatroom header (Slimmed Down Padding)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(KakaoHeaderBg)
                 .then(if (isMobile) Modifier.statusBarsPadding() else Modifier)
-                .padding(horizontal = 8.dp, vertical = 10.dp),
+                .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -2402,8 +2413,16 @@ fun ChatRoomScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 if (isMobile) {
-                    IconButton(onClick = onBackToList) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF374151))
+                    IconButton(
+                        onClick = onBackToList,
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color(0xFF374151),
+                            modifier = Modifier.size(19.dp)
+                        )
                     }
                 } else {
                     Spacer(modifier = Modifier.width(6.dp))
@@ -2412,30 +2431,30 @@ fun ChatRoomScreen(
                 // Room Avatar Initials icon
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(Color.White, RoundedCornerShape(12.dp)),
+                        .size(32.dp)
+                        .background(Color.White, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "💬",
-                        fontSize = 16.sp
+                        fontSize = 14.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Column {
                     Text(
                         text = chatDay.participants.take(3).joinToString(", ") + " 외 대화방",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.5.sp,
                         color = Color(0xFF111827),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${chatDay.date} • 카톡 대화방",
-                        fontSize = 9.5.sp,
+                        fontSize = 9.sp,
                         color = Color(0xFF475569),
                         fontWeight = FontWeight.Medium
                     )
@@ -2445,17 +2464,30 @@ fun ChatRoomScreen(
             // Quick Operations Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
             ) {
+                // Header Toggle Summary Icon Button
+                IconButton(
+                    onClick = { isSummaryExpanded = !isSummaryExpanded },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = "Toggle Summary",
+                        tint = if (isSummaryExpanded || isAISummarized) Color(0xFF6366F1) else Color(0xFF374151),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
                 IconButton(
                     onClick = onToggleSender,
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Sync,
                         contentDescription = "Toggle Sender",
                         tint = Color(0xFF1F2937),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
@@ -2467,13 +2499,13 @@ fun ChatRoomScreen(
                             }
                         }
                     },
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowUp,
                         contentDescription = "Scroll top",
                         tint = Color(0xFF1F2937),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
@@ -2485,44 +2517,250 @@ fun ChatRoomScreen(
                             }
                         }
                     },
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = "Scroll bottom",
                         tint = Color(0xFF1F2937),
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
         }
 
-        // Chat messages timeline lazylist
+        // Pinned Kakao-Style Summary Accordion Banner
+        Surface(
+            color = Color.White.copy(alpha = 0.96f),
+            shadowElevation = if (isSummaryExpanded) 3.dp else 0.5.dp,
+            border = BorderStroke(0.6.dp, Color(0xFFCBD5E1)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Collapsed Bar: Sticky Top Pinned Notice
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isSummaryExpanded = !isSummaryExpanded }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = if (isAISummarized) "✨" else "📌",
+                            fontSize = 12.sp
+                        )
+                        if (hasSummary) {
+                            val firstLine = cleanSummary.lines().firstOrNull { it.isNotBlank() } ?: cleanSummary
+                            Text(
+                                text = firstLine,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF334155),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = "이 날의 대화 요약 보기 (탭하여 펼치기)",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (isAISummarized) {
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0xFFEDE9FE), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "AI 요약",
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF7C3AED)
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = if (isSummaryExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Expand Summary",
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                // Expanded Accordion Card View
+                AnimatedVisibility(
+                    visible = isSummaryExpanded,
+                    enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+                    exit = shrinkVertically(tween(180)) + fadeOut(tween(180))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF8FAFC))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (isAISummarized) "✨ AI 3줄 정밀 요약" else "📌 대화 핵심 요약",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isAISummarized) Color(0xFF6D28D9) else Color(0xFF1E293B)
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                if (hasSummary) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color.White, RoundedCornerShape(6.dp))
+                                            .border(0.6.dp, Color(0xFFCBD5E1), RoundedCornerShape(6.dp))
+                                            .clickable {
+                                                clipboardManager.setText(AnnotatedString(cleanSummary))
+                                                onShowToast("3줄 요약이 복사되었습니다.")
+                                            }
+                                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ContentCopy,
+                                                contentDescription = "Copy",
+                                                tint = Color(0xFF475569),
+                                                modifier = Modifier.size(11.dp)
+                                            )
+                                            Text(
+                                                text = "복사",
+                                                fontSize = 9.5.sp,
+                                                color = Color(0xFF475569),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (onTriggerSummarize != null && !isSummarizing) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFF6366F1), RoundedCornerShape(6.dp))
+                                            .clickable {
+                                                onTriggerSummarize(chatDay)
+                                            }
+                                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome,
+                                                contentDescription = "Summarize",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(11.dp)
+                                            )
+                                            Text(
+                                                text = if (isAISummarized) "다시 요약" else "AI 요약",
+                                                fontSize = 9.5.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        if (isSummarizing) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color(0xFF6366F1)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "AI가 대화를 정밀하게 요약하고 있어요...",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF6366F1),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        } else if (hasSummary) {
+                            Text(
+                                text = cleanSummary,
+                                fontSize = 11.sp,
+                                lineHeight = 16.5.sp,
+                                color = Color(0xFF334155),
+                                letterSpacing = (-0.2).sp
+                            )
+                        } else {
+                            Text(
+                                text = "아직 생성된 대화 요약이 없습니다. 상단의 [AI 요약] 버튼을 누르면 딱 3줄로 요약해 드려요!",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Chat messages timeline lazylist (Tightened Spacing & Top Padding)
         LazyColumn(
             state = scrollState,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(top = 10.dp, bottom = 10.dp)
+                .padding(horizontal = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 6.dp)
         ) {
-            // Header date card element
+            // Header date card element (Compact Padding)
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
                         modifier = Modifier
                             .background(Color(0xFF9EABB8).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 3.dp)
+                            .padding(horizontal = 12.dp, vertical = 2.5.dp)
                     ) {
                         Text(
                             text = chatDay.date,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -2530,7 +2768,7 @@ fun ChatRoomScreen(
                 }
             }
 
-            // Real messages bubbles
+            // Real messages bubbles (Robust Single-Line Timestamp & Proportional Width)
             items(chatDay.messages.size) { idx ->
                 val msg = chatDay.messages[idx]
                 val isMe = msg.sender == mainUser
@@ -2541,7 +2779,7 @@ fun ChatRoomScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 2.dp),
+                        .padding(vertical = 1.dp),
                     horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
                     verticalAlignment = Alignment.Top
                 ) {
@@ -2566,7 +2804,12 @@ fun ChatRoomScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
 
+                    if (isMe) {
+                        Spacer(modifier = Modifier.width(if (isMobile) 36.dp else 80.dp))
+                    }
+
                     Column(
+                        modifier = Modifier.weight(1f, fill = false),
                         horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
                     ) {
                         if (showHeader) {
@@ -2575,7 +2818,7 @@ fun ChatRoomScreen(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF4B5563),
-                                modifier = Modifier.padding(start = 2.dp, bottom = 3.dp)
+                                modifier = Modifier.padding(start = 2.dp, bottom = 2.dp)
                             )
                         }
 
@@ -2588,12 +2831,15 @@ fun ChatRoomScreen(
                                     text = msg.time,
                                     fontSize = 9.sp,
                                     color = Color(0xFF64748B),
+                                    maxLines = 1,
+                                    softWrap = false,
                                     modifier = Modifier.padding(end = 4.dp, bottom = 2.dp)
                                 )
                             }
 
                             Box(
                                 modifier = Modifier
+                                    .weight(1f, fill = false)
                                     .background(
                                         color = if (isMe) KakaoYellow else Color.White,
                                         shape = RoundedCornerShape(
@@ -2608,8 +2854,7 @@ fun ChatRoomScreen(
                                         val snippet = if (msg.text.length > 15) msg.text.take(15) + "..." else msg.text
                                         onShowToast("메시지가 복사되었습니다: \"$snippet\"")
                                     }
-                                    .padding(horizontal = 11.dp, vertical = 8.dp)
-                                    .widthIn(max = if (isMobile) 280.dp else 480.dp)
+                                    .padding(horizontal = 11.dp, vertical = 7.dp)
                             ) {
                                 Text(
                                     text = msg.text,
@@ -2625,10 +2870,16 @@ fun ChatRoomScreen(
                                     text = msg.time,
                                     fontSize = 9.sp,
                                     color = Color(0xFF64748B),
+                                    maxLines = 1,
+                                    softWrap = false,
                                     modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
                                 )
                             }
                         }
+                    }
+
+                    if (!isMe) {
+                        Spacer(modifier = Modifier.width(if (isMobile) 28.dp else 60.dp))
                     }
                 }
             }
