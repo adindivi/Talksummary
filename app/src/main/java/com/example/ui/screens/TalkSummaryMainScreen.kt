@@ -4260,7 +4260,7 @@ fun PrivacyPeaceOfMindDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "100% 안심 프라이버시 약속",
+                    text = "소중한 대화, 안심하고 맡겨주세요",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandSlate,
@@ -4270,7 +4270,7 @@ fun PrivacyPeaceOfMindDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "소중한 메신저 대화, 오직 회원님의 폰 안에서만 안전하게 지켜져요.",
+                    text = "외부 서버로 보내지 않고, 오직 내 스마트폰 안에서만 안전하게 머물러요.",
                     fontSize = 12.5.sp,
                     color = Color(0xFF64748B),
                     textAlign = TextAlign.Center,
@@ -4286,20 +4286,20 @@ fun PrivacyPeaceOfMindDialog(
                 ) {
                     PrivacyCommitmentCard(
                         emoji = "📱",
-                        title = "내 폰 안에서만 안전하게 보관",
-                        desc = "대화 원문과 데이터베이스는 외부 개발자 서버로 일체 전송되지 않으며, 스마트폰 기기 내부 샌드박스에만 안전하게 보관돼요."
+                        title = "개발자도 대화를 볼 수 없어요",
+                        desc = "불러온 대화는 외부 서버로 나가지 않고, 오직 내 스마트폰 안에만 안전하게 암호화되어 보관돼요."
                     )
 
                     PrivacyCommitmentCard(
                         emoji = "🛡️",
-                        title = "안전한 AI 분석 & 개인정보 보호",
-                        desc = "AI 요약 시에도 구글 공식 보안 채널(HTTPS)을 통해 암호화 전송되며, 저장되지 않는 일회성 통신으로 처리돼요."
+                        title = "AI 요약이 끝나면 즉시 사라져요",
+                        desc = "요약할 때만 강력한 보안 채널로 안전하게 처리되며, 요약이 끝나면 어디에도 남지 않고 즉시 파기돼요."
                     )
 
                     PrivacyCommitmentCard(
                         emoji = "🧹",
-                        title = "원클릭 흔적 없는 완전 삭제",
-                        desc = "원하실 때 언제든 상단 휴지통 버튼으로 저장된 모든 대화와 요약 기록을 기기에서 말끔하게 지울 수 있어요."
+                        title = "원할 때 흔적 없이 지울 수 있어요",
+                        desc = "화면 상단의 휴지통 버튼을 누르면, 저장된 모든 대화와 요약 기록이 스마트폰에서 흔적도 없이 깨끗하게 사라져요."
                     )
                 }
 
@@ -4310,7 +4310,7 @@ fun PrivacyPeaceOfMindDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(999.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = BrandSlate)
                 ) {
                     Text(
