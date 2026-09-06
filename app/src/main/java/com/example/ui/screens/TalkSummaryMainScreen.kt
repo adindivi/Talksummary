@@ -1778,7 +1778,7 @@ fun SettingsDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "AI 비서 및 환경 설정",
+                            text = "AI 및 대화 설정",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -1812,13 +1812,13 @@ fun SettingsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "🔒 API 키와 대화는 어떻게 보호되나요?",
+                                    text = "🔒 소중한 대화와 키는 안전하게 보호돼요",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "안심 원칙 보기 >",
+                                    text = "자세히 보기 >",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color(0xFF4F46E5)
@@ -1826,7 +1826,7 @@ fun SettingsDialog(
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "입력하신 키와 대화 내용은 외부 서버로 전송되지 않고 스마트폰 기기 내부 저장소에만 안전하게 보관돼요. 탭하여 100% 안심 프라이버시 약속을 확인해 보세요.",
+                                text = "대화 내용과 API 키는 외부 서버로 유출되지 않고 오직 내 폰 안에만 안전하게 머물러요. 안심하고 사용하세요.",
                                 fontSize = 10.sp,
                                 color = Color(0xFF64748B),
                                 lineHeight = 15.sp
@@ -1834,7 +1834,7 @@ fun SettingsDialog(
                         }
                     }
 
-                    // Background Battery & Doze Optimization Policy Card
+                    // Background Battery & Continuous Summarization Card
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1866,7 +1866,7 @@ fun SettingsDialog(
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Text(
-                                        text = "백그라운드 절전 및 배터리 정책",
+                                        text = "화면이 꺼져도 멈추지 않고 요약하기",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
                                         color = BrandSlate
@@ -1882,7 +1882,7 @@ fun SettingsDialog(
                                         .padding(horizontal = 6.dp, vertical = 2.5.dp)
                                 ) {
                                     Text(
-                                        text = if (isBatteryOptimizationIgnored) "절전 예외 허용됨" else "절전 모드 켜짐",
+                                        text = if (isBatteryOptimizationIgnored) "백그라운드 켜짐" else "절전 모드 동작 중",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isBatteryOptimizationIgnored) Color(0xFF065F46) else Color(0xFF92400E)
@@ -1892,9 +1892,9 @@ fun SettingsDialog(
 
                             Text(
                                 text = if (isBatteryOptimizationIgnored) {
-                                    "화면이 꺼지거나 다른 앱을 사용하는 동안에도 긴 대화 요약이 안드로이드 Doze(절전) 모드에 방해받지 않고 안전하게 실행돼요."
+                                    "화면이 꺼지거나 다른 앱을 쓸 때도 끊김 없이 백그라운드에서 빠르게 요약을 마쳐요."
                                 } else {
-                                    "화면이 꺼지면 안드로이드 Doze 절전 정책에 의해 AI 요약 속도가 느려지거나 일시 중단될 수 있어요. 안정적인 백그라운드 요약을 위해 절전 예외를 권장해요."
+                                    "화면이 꺼지거나 다른 앱으로 이동해도 AI가 멈추지 않도록 백그라운드 실행을 허용해 주세요."
                                 },
                                 fontSize = 10.sp,
                                 color = Color(0xFF64748B),
@@ -1917,7 +1917,7 @@ fun SettingsDialog(
                                     ) {
                                         Text("⚡", fontSize = 11.sp)
                                         Text(
-                                            text = "배터리 절전 예외 설정하기",
+                                            text = "멈춤 없이 계속 요약하기",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
@@ -1930,7 +1930,7 @@ fun SettingsDialog(
 
                     // AI Engine Selector
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("AI 비서 선택", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                        Text("어떤 AI로 요약할까요?", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1943,7 +1943,7 @@ fun SettingsDialog(
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "구글 제미나이 (클라우드)",
+                                    text = "구글 제미나이 (빠르고 정밀)",
                                     color = if (!useLocalChecked && useChecked) KakaoTextDark else Color.DarkGray,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1959,7 +1959,7 @@ fun SettingsDialog(
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "내 폰 안의 AI (오프라인)",
+                                    text = "내 폰 안의 AI (데이터 무료)",
                                     color = if (useLocalChecked) Color.White else Color.DarkGray,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1978,10 +1978,10 @@ fun SettingsDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Google AI Studio API 키", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("Google API 키", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                 val context = LocalContext.current
                                 Text(
-                                    "무료 키 발급받기 →",
+                                    "무료로 발급받기 →",
                                     fontSize = 10.sp,
                                     color = Color(0xFF2563EB),
                                     fontWeight = FontWeight.Bold,
@@ -1992,9 +1992,9 @@ fun SettingsDialog(
                                                 android.net.Uri.parse("https://aistudio.google.com/app/apikey")
                                             )
                                             context.startActivity(intent)
-                                            onShowToast("Google AI Studio 키 발급 페이지로 이동합니다.", "info")
+                                            onShowToast("Google AI 키 발급 페이지로 이동해요.", "info")
                                         } catch (e: Exception) {
-                                            onShowToast("웹 브라우저를 열 수 없습니다: ${e.message}", "error")
+                                            onShowToast("웹 브라우저를 열 수 없어요: ${e.message}", "error")
                                         }
                                     }
                                 )
@@ -2114,7 +2114,7 @@ fun SettingsDialog(
                     // Diagnostic Test Blocks
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = "🛠️ 시스템 점검 및 연결 진단",
+                            text = "🛠️ 연결 상태 및 시스템 점검",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             color = BrandSlate
@@ -2138,7 +2138,7 @@ fun SettingsDialog(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Test Connection", tint = Color(0xFF4F46E5), modifier = Modifier.size(14.dp))
-                                    Text("AI 통신 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
+                                    Text("AI 연결 테스트", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
                                 }
                             }
 
@@ -2156,7 +2156,7 @@ fun SettingsDialog(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(Icons.Default.CheckCircle, contentDescription = "System check", tint = BrandSlate, modifier = Modifier.size(14.dp))
-                                    Text("시스템 전체 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandSlate)
+                                    Text("시스템 상태 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandSlate)
                                 }
                             }
                         }
@@ -2200,7 +2200,7 @@ fun SettingsDialog(
                         shape = RoundedCornerShape(12.dp),
                         onClick = { onSave(keyText, useChecked, selectedModel, useLocalChecked, localPathText) }
                     ) {
-                        Text("설정 저장하기", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("설정 저장", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
