@@ -225,7 +225,7 @@ fun TalkSummaryMainScreen(
                                     modifier = Modifier.size(17.dp)
                                 )
                             }
-                            Column {
+                            Column(verticalArrangement = Arrangement.Center) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = "TalkSummary",
@@ -235,16 +235,16 @@ fun TalkSummaryMainScreen(
                                         maxLines = 1,
                                         softWrap = false
                                     )
-                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Box(
                                         modifier = Modifier
                                             .background(Color(0xFFEFF6FF), RoundedCornerShape(5.dp))
                                             .border(0.7.dp, Color(0xFFBFDBFE), RoundedCornerShape(5.dp))
-                                            .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
+                                            .padding(horizontal = 5.dp, vertical = 1.dp)
                                     ) {
                                         Text(
                                             text = "내 폰 안의 AI",
-                                            fontSize = 8.sp,
+                                            fontSize = 8.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF2563EB),
                                             maxLines = 1,
@@ -252,10 +252,10 @@ fun TalkSummaryMainScreen(
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "복잡한 대화도 딱 3줄로 깔끔하게",
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
+                                    lineHeight = 11.sp,
                                     color = Color(0xFF64748B),
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1,
@@ -968,6 +968,7 @@ fun TimelineColumn(
             Button(
                 onClick = onImportFileClick,
                 colors = ButtonDefaults.buttonColors(containerColor = KakaoYellow),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 modifier = Modifier
@@ -986,12 +987,12 @@ fun TimelineColumn(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "카톡 대화 파일 열기",
+                        "대화 파일 열기",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = KakaoTextDark,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        softWrap = false
                     )
                 }
             }
@@ -999,6 +1000,7 @@ fun TimelineColumn(
             Button(
                 onClick = onPasteTextClick,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                 modifier = Modifier
@@ -1017,12 +1019,12 @@ fun TimelineColumn(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "대화 내용 붙여넣기",
+                        "대화 붙여넣기",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = BrandSlate,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        softWrap = false
                     )
                 }
             }
@@ -1451,7 +1453,7 @@ fun TimelineItemCard(
                         containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
                         contentColor = if (isAISummarized) BrandSlate else Color.White
                     ),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                     shape = RoundedCornerShape(8.dp),
                     border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
                     modifier = Modifier.height(30.dp)
@@ -1467,7 +1469,7 @@ fun TimelineItemCard(
                             modifier = Modifier.size(11.dp)
                         )
                         Text(
-                            text = if (isAISummarized) "다시 요약하기" else "AI 3줄 요약",
+                            text = if (isAISummarized) "다시 요약" else "AI 3줄 요약",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
