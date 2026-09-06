@@ -174,6 +174,7 @@ fun TalkSummaryMainScreen(
 
     // Runtime Permission (Android 13+ Notification for AI Background Service)
     var showPermissionRationale by remember { mutableStateOf(false) }
+    var showPrivacyModal by remember { mutableStateOf(false) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -312,22 +313,11 @@ fun TalkSummaryMainScreen(
                         Spacer(modifier = Modifier.width(4.dp))
 
                         if (showClearConfirm) {
-                            AlertDialog(
-                                onDismissRequest = { showClearConfirm = false },
-                                icon = { Icon(Icons.Default.Warning, contentDescription = "Warn", tint = Color.Red) },
-                                title = { Text("대화 기록을 모두 지울까요?", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-                                text = { Text("기기에 보관된 모든 대화 내용과 요약 데이터가 삭제됩니다. (API 키 및 연동 설정은 안전하게 유지돼요.)", fontSize = 13.sp) },
-                                confirmButton = {
-                                    Button(
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                                        onClick = {
-                                            showClearConfirm = false
-                                            viewModel.clearAllData()
-                                        }
-                                    ) { Text("기록 지우기") }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { showClearConfirm = false }) { Text("취소") }
+                            WarmDeleteConfirmDialog(
+                                onDismiss = { showClearConfirm = false },
+                                onConfirm = {
+                                    showClearConfirm = false
+                                    viewModel.clearAllData()
                                 }
                             )
                         }
@@ -371,7 +361,8 @@ fun TalkSummaryMainScreen(
                         aiState = aiState,
                         modifier = Modifier.weight(timelineWeight),
                         onImportFileClick = { filePickerLauncher.launch("text/plain") },
-                        onPasteTextClick = { viewModel.setShowPasteModal(true) }
+                        onPasteTextClick = { viewModel.setShowPasteModal(true) },
+                        onOpenPrivacyModal = { showPrivacyModal = true }
                     )
 
                     Box(
@@ -390,7 +381,8 @@ fun TalkSummaryMainScreen(
                                 onToggleSender = { viewModel.toggleSenderMode() },
                                 modifier = Modifier.fillMaxSize(),
                                 isMobile = false,
-                                onShowToast = { msg -> viewModel.showToast(msg, "info") }
+                                onShowToast = { msg -> viewModel.showToast(msg, "info") },
+                                onShowPrivacyModal = { showPrivacyModal = true }
                             )
                         } else {
                             Box(
@@ -460,7 +452,8 @@ fun TalkSummaryMainScreen(
                             aiState = aiState,
                             modifier = Modifier.fillMaxSize().padding(12.dp),
                             onImportFileClick = { filePickerLauncher.launch("text/plain") },
-                            onPasteTextClick = { viewModel.setShowPasteModal(true) }
+                            onPasteTextClick = { viewModel.setShowPasteModal(true) },
+                            onOpenPrivacyModal = { showPrivacyModal = true }
                         )
                     } else {
                         ChatRoomScreen(
@@ -471,7 +464,8 @@ fun TalkSummaryMainScreen(
                             onToggleSender = { viewModel.toggleSenderMode() },
                             modifier = Modifier.fillMaxSize(),
                             isMobile = true,
-                            onShowToast = { msg -> viewModel.showToast(msg, "info") }
+                            onShowToast = { msg -> viewModel.showToast(msg, "info") },
+                            onShowPrivacyModal = { showPrivacyModal = true }
                         )
                     }
                 }
@@ -525,43 +519,20 @@ fun TalkSummaryMainScreen(
                 onRunDiagnostic = { key -> viewModel.runSmartDiagnosticConnection(key) },
                 onRunSystemCheck = { viewModel.runFullSystemCheck() },
                 onPickLocalModel = { localModelPickerLauncher.launch("*/*") },
-                onShowToast = { msg, type -> viewModel.showToast(msg, type) }
+                onShowToast = { msg, type -> viewModel.showToast(msg, type) },
+                onShowPrivacyModal = { showPrivacyModal = true }
             )
         }
 
-        // Permission Rationale Modal
+        // Permission Rationale Modal (Warm Apple & Kakao Style)
         if (showPermissionRationale) {
-            AlertDialog(
-                onDismissRequest = { showPermissionRationale = false },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.Notifications,
-                        contentDescription = "Notification",
-                        tint = BrandSlate
-                    )
-                },
-                title = { Text("백그라운드 요약 알림 안내", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-                text = {
-                    Text(
-                        "대용량 대화 요약 시 앱을 닫거나 다른 앱을 사용 중이어도 요약 진행 상황과 완료 여부를 상단 알림창으로 알려드려요.\n\n알림 권한을 켜두시면 요약이 끝났을 때 바로 확인하실 수 있어요.",
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = Color(0xFF475569)
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandSlate),
-                        onClick = {
-                            showPermissionRationale = false
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        }
-                    ) { Text("알림 켜기") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showPermissionRationale = false }) { Text("나중에", color = Color.Gray) }
+            WarmNotificationRationaleDialog(
+                onDismiss = { showPermissionRationale = false },
+                onConfirm = {
+                    showPermissionRationale = false
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                 }
             )
         }
@@ -575,62 +546,23 @@ fun TalkSummaryMainScreen(
             )
         }
 
-        // Alert Detail Modal (Error Dialog)
+        // Alert Detail Modal (Warm Error Guidance Dialog)
         if (showErrorDetails) {
-            AlertDialog(
-                onDismissRequest = { viewModel.setShowErrorDetails(false) },
-                icon = {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(Color(0xFFFEF2F2), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "Warning",
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                },
-                title = {
-                    Text(
-                        text = errorTitle.ifEmpty { "안내" },
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = BrandSlate
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = errorDescription,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            color = Color(0xFF334155)
-                        )
-                        HorizontalDivider(color = Color(0xFFF1F5F9))
-                        Text("💡 해결 방법:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = BrandSlate)
-                        Text("• API 키가 바르게 등록되어 있는지 [설정] 메뉴에서 확인해 주세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
-                        Text("• 카카오톡 내보내기 대화 파일(.txt)이 맞는지 확인해 주세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandSlate),
-                        shape = RoundedCornerShape(10.dp),
-                        onClick = {
-                            viewModel.setShowErrorDetails(false)
-                            viewModel.setShowSettings(true)
-                        }
-                    ) { Text("설정 열기", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.setShowErrorDetails(false) }) { Text("닫기", color = Color.Gray, fontSize = 12.sp) }
-                },
-                shape = RoundedCornerShape(20.dp),
-                containerColor = Color.White
+            WarmErrorGuidanceDialog(
+                title = errorTitle,
+                description = errorDescription,
+                onDismiss = { viewModel.setShowErrorDetails(false) },
+                onOpenSettings = {
+                    viewModel.setShowErrorDetails(false)
+                    viewModel.setShowSettings(true)
+                }
+            )
+        }
+
+        // 100% Privacy & Security Peace-of-Mind Modal
+        if (showPrivacyModal) {
+            PrivacyPeaceOfMindDialog(
+                onDismiss = { showPrivacyModal = false }
             )
         }
 
@@ -865,7 +797,8 @@ fun TimelineColumn(
     aiState: String,
     modifier: Modifier = Modifier,
     onImportFileClick: () -> Unit,
-    onPasteTextClick: () -> Unit = {}
+    onPasteTextClick: () -> Unit = {},
+    onOpenPrivacyModal: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -920,6 +853,7 @@ fun TimelineColumn(
                         "대화 분석기" to (parserState == "정상작동"),
                         "AI 비서" to (aiState != "오프라인")
                     ).forEach { (label, ok) ->
+                        val isStorage = (label == "대화 저장소")
                         Box(
                             modifier = Modifier
                                 .background(
@@ -930,6 +864,10 @@ fun TimelineColumn(
                                     0.5.dp,
                                     if (ok) Color(0xFFA7F3D0) else Color(0xFFFECACA),
                                     RoundedCornerShape(6.dp)
+                                )
+                                .then(
+                                    if (isStorage) Modifier.debouncedClickable { onOpenPrivacyModal() }
+                                    else Modifier
                                 )
                                 .padding(horizontal = 4.5.dp, vertical = 2.dp)
                         ) {
@@ -943,7 +881,7 @@ fun TimelineColumn(
                                         .background(if (ok) Color(0xFF10B981) else Color(0xFFEF4444), CircleShape)
                                 )
                                 Text(
-                                    text = label,
+                                    text = if (isStorage) "대화 저장소 🔒" else label,
                                     fontSize = 8.5.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = if (ok) Color(0xFF065F46) else Color(0xFF991B1B),
@@ -1547,7 +1485,8 @@ fun ChatRoomScreen(
     onToggleSender: () -> Unit,
     modifier: Modifier = Modifier,
     isMobile: Boolean = true,
-    onShowToast: (String) -> Unit = {}
+    onShowToast: (String) -> Unit = {},
+    onShowPrivacyModal: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -1829,7 +1768,9 @@ fun ChatRoomScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color(0xFFF1F5F9), CircleShape)
+                        .background(Color.White.copy(alpha = 0.85f), CircleShape)
+                        .border(0.5.dp, Color(0xFFCBD5E1), CircleShape)
+                        .debouncedClickable { onShowPrivacyModal() }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Row(
@@ -1839,14 +1780,14 @@ fun ChatRoomScreen(
                         Icon(
                             imageVector = Icons.Filled.Lock,
                             contentDescription = "Safe",
-                            tint = Color(0xFF64748B),
+                            tint = Color(0xFF059669),
                             modifier = Modifier.size(11.dp)
                         )
                         Text(
                             text = "대화 내용은 폰 안에만 안전하게 머물러요",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF475569),
+                            color = Color(0xFF334155),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -1898,7 +1839,8 @@ fun SettingsDialog(
     onRunDiagnostic: (String) -> Unit,
     onRunSystemCheck: () -> Unit,
     onPickLocalModel: () -> Unit,
-    onShowToast: (String, String) -> Unit = { _, _ -> }
+    onShowToast: (String, String) -> Unit = { _, _ -> },
+    onShowPrivacyModal: () -> Unit = {}
 ) {
     var keyText by remember { mutableStateOf(apiKey) }
     var useChecked by remember { mutableStateOf(useGemini) }
@@ -1973,18 +1915,31 @@ fun SettingsDialog(
                             .fillMaxWidth()
                             .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
                             .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                            .debouncedClickable { onShowPrivacyModal() }
                             .padding(12.dp)
                     ) {
                         Column {
-                            Text(
-                                text = "🔒 API 키는 어떻게 보호되나요?",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = BrandSlate
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🔒 API 키와 대화는 어떻게 보호되나요?",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = BrandSlate
+                                )
+                                Text(
+                                    text = "안심 원칙 보기 >",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF4F46E5)
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "입력하신 API 키는 외부 서버로 전송되지 않으며, 스마트폰 기기 내부 저장소에만 안전하게 보관되어 구글 공식 AI 통신에만 사용됩니다.",
+                                text = "입력하신 키와 대화 내용은 외부 서버로 전송되지 않고 스마트폰 기기 내부 저장소에만 안전하게 보관돼요. 탭하여 100% 안심 프라이버시 약속을 확인해 보세요.",
                                 fontSize = 10.sp,
                                 color = Color(0xFF64748B),
                                 lineHeight = 15.sp
@@ -2469,3 +2424,644 @@ fun PasteTextDialog(
     }
 }
 
+// -------------------------------------------------------------------------
+// USER-FRIENDLY WARM REASSURANCE DIALOGS (Apple & Kakao Style)
+// -------------------------------------------------------------------------
+
+/**
+ * 1. Warm Reassurance Delete Confirmation Dialog
+ * Replaces harsh warning dialogs with a soothing, reassuring message.
+ */
+@Composable
+fun WarmDeleteConfirmDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 400.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Friendly Soft Rose Icon Header
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color(0xFFFFF1F2), CircleShape)
+                        .border(1.dp, Color(0xFFFFE4E6), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DeleteSweep,
+                        contentDescription = "비우기",
+                        tint = Color(0xFFE11D48),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "대화 기록을 모두 비울까요?",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandSlate,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "기기에 저장된 대화 원문과 요약본만 폰에서 깔끔하게 정리돼요.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Reassuring Info Box
+                Surface(
+                    color = Color(0xFFF8FAFC),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("💬", fontSize = 13.sp)
+                            Text(
+                                text = "카카오톡에서 '대화 내보내기'로 언제든 다시 불러와 새롭게 요약할 수 있어요.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF334155),
+                                lineHeight = 17.sp
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("🔒", fontSize = 13.sp)
+                            Text(
+                                text = "등록하신 API 키와 맞춤 환경 설정은 안전하게 그대로 유지돼요.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 17.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(22.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandSlate)
+                    ) {
+                        Text(
+                            text = "그대로 둘게요",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFFFECDD3)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFFFFF1F2),
+                            contentColor = Color(0xFFE11D48)
+                        )
+                    ) {
+                        Text(
+                            text = "깨끗이 비우기",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 2. Warm Guidance Trouble-Resolution Dialog
+ * Replaces generic error dialogs with actionable steps and peace-of-mind assurance.
+ */
+@Composable
+fun WarmErrorGuidanceDialog(
+    title: String,
+    description: String,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 410.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Friendly Soft Amber Badge
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .background(Color(0xFFFEF3C7), CircleShape)
+                        .border(1.dp, Color(0xFFFDE68A), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TipsAndUpdates,
+                        contentDescription = "도움말",
+                        tint = Color(0xFFD97706),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = title.ifEmpty { "잠시 확인해 주세요" },
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandSlate,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = description,
+                    fontSize = 13.sp,
+                    color = Color(0xFF334155),
+                    lineHeight = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Reassuring Shield Banner
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFECFDF5), RoundedCornerShape(12.dp))
+                        .border(0.5.dp, Color(0xFFA7F3D0), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Shield,
+                            contentDescription = "Safe",
+                            tint = Color(0xFF059669),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "대화 원문과 기존 저장 기록은 안전하니 걱정하지 마세요.",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF065F46)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Actionable Solution Guidance Cards
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Quick Action: Open Settings
+                    Surface(
+                        onClick = onOpenSettings,
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text("⚙️", fontSize = 14.sp)
+                                Column {
+                                    Text(
+                                        text = "AI 비서 및 API 키 설정 열기",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.5.sp,
+                                        color = BrandSlate
+                                    )
+                                    Text(
+                                        text = "Google AI Gemini 키 발급 및 모델 변경",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "이동",
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
+
+                    // 카톡 대화 내보내기 팁
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 9.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                text = "💡 카카오톡 대화 가져오기 팁",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandSlate
+                            )
+                            Text(
+                                text = "카톡 채팅방 > 우측 상단 메뉴(≡) > 설정(⚙️) > [대화 내용 내보내기] 후 저장된 텍스트 파일(.txt)을 선택하거나 복사해서 붙여넣기 해보세요.",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandSlate)
+                ) {
+                    Text(
+                        text = "확인했어요",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 3. 100% Privacy & Security Peace-of-Mind Dialog
+ * Explains device-only sandbox, privacy shielding, and instant clean deletion rights.
+ */
+@Composable
+fun PrivacyPeaceOfMindDialog(
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 410.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Green Shield Header
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .background(Color(0xFFECFDF5), CircleShape)
+                        .border(1.dp, Color(0xFFA7F3D0), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = "안심 보안",
+                        tint = Color(0xFF059669),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = "100% 안심 프라이버시 약속",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandSlate,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "소중한 메신저 대화, 오직 회원님의 폰 안에서만 안전하게 지켜져요.",
+                    fontSize = 12.5.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 17.sp
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // 3 Core Commitments
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    PrivacyCommitmentCard(
+                        emoji = "📱",
+                        title = "내 폰 안에서만 안전하게 보관",
+                        desc = "대화 원문과 데이터베이스는 외부 개발자 서버로 일체 전송되지 않으며, 스마트폰 기기 내부 샌드박스에만 안전하게 보관돼요."
+                    )
+
+                    PrivacyCommitmentCard(
+                        emoji = "🛡️",
+                        title = "안전한 AI 분석 & 개인정보 보호",
+                        desc = "AI 요약 시에도 구글 공식 보안 채널(HTTPS)을 통해 암호화 전송되며, 저장되지 않는 일회성 통신으로 처리돼요."
+                    )
+
+                    PrivacyCommitmentCard(
+                        emoji = "🧹",
+                        title = "원클릭 흔적 없는 완전 삭제",
+                        desc = "원하실 때 언제든 상단 휴지통 버튼으로 저장된 모든 대화와 요약 기록을 기기에서 말끔하게 지울 수 있어요."
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandSlate)
+                ) {
+                    Text(
+                        text = "안심하고 이용할게요",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyCommitmentCard(
+    emoji: String,
+    title: String,
+    desc: String
+) {
+    Surface(
+        color = Color(0xFFF8FAFC),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(Color.White, CircleShape)
+                    .border(0.5.dp, Color(0xFFCBD5E1), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(emoji, fontSize = 14.sp)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = BrandSlate
+                )
+                Text(
+                    text = desc,
+                    fontSize = 11.sp,
+                    color = Color(0xFF475569),
+                    lineHeight = 15.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 4. Warm Notification Permission Rationale Dialog
+ * Explains gentle background notification purpose without aggressive popups.
+ */
+@Composable
+fun WarmNotificationRationaleDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 390.dp)
+                .padding(16.dp),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Soft Blue Notification Bell
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color(0xFFEFF6FF), CircleShape)
+                        .border(1.dp, Color(0xFFDBEAFE), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.NotificationsActive,
+                        contentDescription = "알림",
+                        tint = Color(0xFF2563EB),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "요약이 끝나면 살짝 알려드릴게요",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandSlate,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "대화 요약이 진행되는 동안 다른 앱을 편하게 보고 계셔도 괜찮아요.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Reassuring Info Box
+                Surface(
+                    color = Color(0xFFF8FAFC),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("🔔", fontSize = 13.sp)
+                            Text(
+                                text = "요약이 완료되는 즉시 상단 알림으로 조용히 알려드려요.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF334155),
+                                lineHeight = 16.sp
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("🌿", fontSize = 13.sp)
+                            Text(
+                                text = "스팸이나 불필요한 홍보성 알림은 일체 보내지 않아요.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Buttons
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandSlate)
+                    ) {
+                        Text(
+                            text = "알림 켜기",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "나중에 할게요",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
