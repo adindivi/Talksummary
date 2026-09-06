@@ -19,9 +19,9 @@ data class ChatDay(
 )
 
 enum class TimelineGroupingMode(val label: String) {
-    DAY("일별"),
+    YEAR("년도별"),
     MONTH("월별"),
-    YEAR("년도별")
+    DAY("일별")
 }
 
 data class MonthGroupData(

@@ -1469,9 +1469,11 @@ fun TimelineColumn(
             }
         }
 
-        // Galaxy Gallery One UI Style: 3-Tier Segmented Switcher [일별 | 월별 | 년도별] + Count Badge
+        // Galaxy Gallery One UI Style: 3-Tier Segmented Switcher [년도별 | 월별 | 일별] + Count Badge
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 1.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1495,9 +1497,9 @@ fun TimelineColumn(
 
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
-                    .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .background(Color(0xFFF1F5F9), RoundedCornerShape(999.dp))
+                    .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 9.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = countLabel,
@@ -1977,7 +1979,7 @@ fun TimelineItemCard(
 }
 
 /**
- * Galaxy Gallery (One UI) Style 3-Tier Segmented Switcher [일별 | 월별 | 년도별]
+ * Galaxy Gallery (One UI) Style 3-Tier Segmented Switcher [년도별 | 월별 | 일별]
  */
 @Composable
 fun GalaxySegmentedSwitcher(
@@ -1989,10 +1991,10 @@ fun GalaxySegmentedSwitcher(
         shape = RoundedCornerShape(999.dp),
         color = Color(0xFFF1F5F9),
         border = BorderStroke(0.8.dp, Color(0xFFE2E8F0)),
-        modifier = modifier.height(34.dp)
+        modifier = modifier.height(28.dp)
     ) {
         Row(
-            modifier = Modifier.padding(2.5.dp),
+            modifier = Modifier.padding(2.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -2001,19 +2003,22 @@ fun GalaxySegmentedSwitcher(
                 Surface(
                     shape = RoundedCornerShape(999.dp),
                     color = if (isSelected) Color.White else Color.Transparent,
-                    border = if (isSelected) BorderStroke(0.8.dp, Color(0xFFCBD5E1)) else null,
+                    border = if (isSelected) BorderStroke(0.7.dp, Color(0xFFCBD5E1)) else null,
                     shadowElevation = if (isSelected) 1.dp else 0.dp,
                     modifier = Modifier.clickable { onModeSelect(mode) }
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .widthIn(min = 48.dp)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = mode.label,
-                            fontSize = 11.5.sp,
+                            fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B)
+                            color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B),
+                            letterSpacing = (-0.2).sp
                         )
                     }
                 }
