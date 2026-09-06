@@ -33,6 +33,7 @@ import com.example.service.TaskType
 import com.example.util.AppLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
@@ -332,14 +333,14 @@ class TalkSummaryViewModel(
         showToast("'${nextUser}'님을 나(노란 말풍선)로 바꿨어요.", "success")
     }
 
+    private var toastJob: Job? = null
+
     fun showToast(message: String, type: String = "info") {
+        toastJob?.cancel()
         _toastMessage.value = message
         _toastType.value = type
-        viewModelScope.launch(Dispatchers.Main) {
-            try {
-                android.widget.Toast.makeText(getApplication(), message, android.widget.Toast.LENGTH_SHORT).show()
-            } catch (_: Exception) {}
-            delay(2800)
+        toastJob = viewModelScope.launch(Dispatchers.Main) {
+            delay(2600)
             if (_toastMessage.value == message) {
                 _toastMessage.value = null
             }
@@ -732,7 +733,7 @@ $serialized
                     _localInferenceStats.value = "완료: ${String.format(Locale.US, "%.1f", lastTps)} tok/s | ${tokensCount}단어 (${String.format(Locale.US, "%.1f", durationSec)}s) | 메모리: ${usedMemMb}MB"
                     
                     viewModelScope.launch {
-                        delay(10000)
+                        delay(3500)
                         _localInferenceStats.value = null
                     }
 

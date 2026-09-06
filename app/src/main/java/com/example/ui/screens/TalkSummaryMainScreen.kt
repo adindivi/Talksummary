@@ -451,25 +451,26 @@ fun TalkSummaryMainScreen(
                 }
             }
             
-            // Diagnostics Overlay for Local LLM
+            // Diagnostics Overlay for Local LLM (Top Floating Capsule, never overlaps with bottom toasts)
             if (localInferenceStats != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 80.dp),
-                    contentAlignment = Alignment.BottomCenter
+                        .padding(top = 10.dp),
+                    contentAlignment = Alignment.TopCenter
                 ) {
                     Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xCC000000)),
+                        shape = RoundedCornerShape(999.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xEE1E293B)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
-                            Icon(Icons.Default.Build, contentDescription = "Engine", tint = BrandGreenAccent, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Build, contentDescription = "Engine", tint = BrandGreenAccent, modifier = Modifier.size(15.dp))
                             Text(
                                 text = localInferenceStats ?: "",
                                 color = Color.White,
@@ -558,7 +559,7 @@ fun TalkSummaryMainScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 50.dp, start = 20.dp, end = 20.dp),
+                    .padding(bottom = 36.dp, start = 20.dp, end = 20.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Card(
@@ -569,16 +570,16 @@ fun TalkSummaryMainScreen(
                             else -> Color(0xFFF8FAFC)
                         }
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(999.dp),
                     border = BorderStroke(1.dp, when (toastType) {
                         "error" -> Color(0xFFFCA5A5)
                         "success" -> Color(0xFF6EE7B7)
                         else -> Color(0xFFCBD5E1)
                     }),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -594,7 +595,7 @@ fun TalkSummaryMainScreen(
                                 "success" -> Color(0xFF10B981)
                                 else -> Color(0xFF3B82F6)
                             },
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = toastMessage ?: "",
