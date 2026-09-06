@@ -934,22 +934,25 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                         }
                     }
 
-                    // Key topics for this day if available
-                    if (currentPoint.keywords.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "주요 키워드:",
-                                fontSize = 10.5.sp,
-                                color = Color(0xFF64748B),
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                softWrap = false
-                            )
+                    // Key topics or clean placeholder to maintain invariant card height
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "주요 키워드:",
+                            fontSize = 10.5.sp,
+                            color = Color(0xFF64748B),
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+
+                        if (currentPoint.keywords.isNotEmpty()) {
                             currentPoint.keywords.take(3).forEach { kw ->
                                 Surface(
                                     color = Color(0xFFE0F2FE),
@@ -962,10 +965,26 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                                         color = Color(0xFF0284C7),
                                         maxLines = 1,
                                         softWrap = false,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                                     )
                                 }
                             }
+                        } else if (currentPoint.messageCount == 0) {
+                            Text(
+                                text = "대화가 없던 조용한 날이에요 🍃",
+                                fontSize = 10.sp,
+                                color = Color(0xFF94A3B8),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        } else {
+                            Text(
+                                text = "짧은 일상 대화 위주였어요 💬",
+                                fontSize = 10.sp,
+                                color = Color(0xFF94A3B8),
+                                maxLines = 1,
+                                softWrap = false
+                            )
                         }
                     }
                 }
@@ -1193,35 +1212,45 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Hovered Tooltip Bar / Helper text
+            // Hovered Tooltip Bar / Helper text (fixed 24dp height to prevent CLS)
             val safeHover = hoveredHour
-            if (safeHover != null && safeHover in 0..23) {
-                val hourCount = currentPoint.hourlyCounts[safeHover]
-                val hourPct = if (currentPoint.messageCount > 0) {
-                    ((hourCount.toFloat() / currentPoint.messageCount) * 100f).roundToInt()
-                } else 0
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(24.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (safeHover != null && safeHover in 0..23) {
+                    val hourCount = currentPoint.hourlyCounts[safeHover]
+                    val hourPct = if (currentPoint.messageCount > 0) {
+                        ((hourCount.toFloat() / currentPoint.messageCount) * 100f).roundToInt()
+                    } else 0
 
-                Surface(
-                    color = Color(0xFFE0F2FE),
-                    shape = RoundedCornerShape(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                    Surface(
+                        color = Color(0xFFE0F2FE),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "📍 ${safeHover}시 ~ ${safeHover + 1}시: ${hourCount}건 체결 (${hourPct}%)",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0284C7),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                } else {
                     Text(
-                        text = "📍 ${safeHover}시 ~ ${safeHover + 1}시: ${hourCount}건 체결 (${hourPct}%)",
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0284C7),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 3.dp)
+                        text = "👆 24시간 바를 터치해 시간대별 체결량을 확인하세요",
+                        fontSize = 10.sp,
+                        color = Color(0xFF64748B),
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
-            } else {
-                Text(
-                    text = "👆 24시간 바를 터치하면 시간대별 상세 체결 건수를 확인할 수 있어요",
-                    fontSize = 10.sp,
-                    color = Color(0xFF64748B),
-                    modifier = Modifier.padding(vertical = 2.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
