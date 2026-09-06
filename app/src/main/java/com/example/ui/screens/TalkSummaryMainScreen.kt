@@ -3,6 +3,7 @@ package com.example.ui.screens
 import com.example.ui.theme.MyApplicationTheme
 
 import android.app.DatePickerDialog
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -39,6 +40,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
@@ -191,137 +193,149 @@ fun TalkSummaryMainScreen(
         }
     }
 
+    val configuration = LocalConfiguration.current
+    val isTabletOrFoldable = configuration.screenWidthDp >= 720
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
+            if (selectedChatDay == null || isTabletOrFoldable) {
+                TopAppBar(
+                    title = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(KakaoYellow, RoundedCornerShape(9.dp))
+                                    .padding(5.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                                    contentDescription = "Logo",
+                                    tint = KakaoTextDark,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "TalkSummary",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A),
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFFEFF6FF), RoundedCornerShape(5.dp))
+                                            .border(0.7.dp, Color(0xFFBFDBFE), RoundedCornerShape(5.dp))
+                                            .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
+                                    ) {
+                                        Text(
+                                            text = "온디바이스 AI",
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF2563EB),
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "카카오톡 대화 분석 및 3줄 요약",
+                                    fontSize = 9.5.sp,
+                                    color = Color(0xFF64748B),
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        if (allChatDays.isNotEmpty()) {
+                            IconButton(
+                                onClick = { viewModel.triggerBulkSummarize() },
+                                modifier = Modifier
+                                    .background(Color(0xFFFEF3C7), RoundedCornerShape(10.dp))
+                                    .size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AutoAwesome,
+                                    contentDescription = "전체 AI 일괄 요약",
+                                    tint = Color(0xFFD97706),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.setShowSettings(true) },
                             modifier = Modifier
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
                                 .size(34.dp)
-                                .background(KakaoYellow, RoundedCornerShape(10.dp))
-                                .padding(6.dp),
-                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = "Logo",
-                                tint = KakaoTextDark,
+                                imageVector = Icons.Filled.Shield,
+                                contentDescription = "Settings",
+                                tint = Color(0xFF4F46E5),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "TalkSummary",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .background(Color(0xFFEFF6FF), RoundedCornerShape(6.dp))
-                                        .border(0.8.dp, Color(0xFFBFDBFE), RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "온디바이스 AI",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF2563EB)
-                                    )
-                                }
-                            }
-                            Text(
-                                text = "카카오톡 대화 분석 및 3줄 요약",
-                                fontSize = 10.sp,
-                                color = Color(0xFF64748B),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    if (allChatDays.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        
+                        var showClearConfirm by remember { mutableStateOf(false) }
                         IconButton(
-                            onClick = { viewModel.triggerBulkSummarize() },
+                            onClick = { showClearConfirm = true },
                             modifier = Modifier
-                                .background(Color(0xFFFEF3C7), RoundedCornerShape(12.dp))
-                                .size(38.dp)
+                                .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                .size(34.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.AutoAwesome,
-                                contentDescription = "전체 AI 일괄 요약",
-                                tint = Color(0xFFD97706),
-                                modifier = Modifier.size(20.dp)
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Clear DB",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
+                        Spacer(modifier = Modifier.width(4.dp))
 
-                    IconButton(
-                        onClick = { viewModel.setShowSettings(true) },
-                        modifier = Modifier
-                            .background(Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
-                            .size(38.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Shield,
-                            contentDescription = "Settings",
-                            tint = Color(0xFF4F46E5),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    var showClearConfirm by remember { mutableStateOf(false) }
-                    IconButton(
-                        onClick = { showClearConfirm = true },
-                        modifier = Modifier
-                            .background(Color(0xFFFEF2F2), RoundedCornerShape(12.dp))
-                            .size(38.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Clear DB",
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    if (showClearConfirm) {
-                        AlertDialog(
-                            onDismissRequest = { showClearConfirm = false },
-                            icon = { Icon(Icons.Default.Warning, contentDescription = "Warn", tint = Color.Red) },
-                            title = { Text("업로드 대화록 비우기", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-                            text = { Text("기기 내부에 임시 보관 중인 모든 대화 기록 및 요약 데이터가 삭제됩니다. (API Key 및 연동 설정은 안전하게 유지됩니다.)", fontSize = 13.sp) },
-                            confirmButton = {
-                                Button(
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                                    onClick = {
-                                        showClearConfirm = false
-                                        viewModel.clearAllData()
-                                    }
-                                ) { Text("삭제") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showClearConfirm = false }) { Text("취소") }
-                            }
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color.Black
-                ),
-                modifier = Modifier.shadow(1.dp)
-            )
+                        if (showClearConfirm) {
+                            AlertDialog(
+                                onDismissRequest = { showClearConfirm = false },
+                                icon = { Icon(Icons.Default.Warning, contentDescription = "Warn", tint = Color.Red) },
+                                title = { Text("업로드 대화록 비우기", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                text = { Text("기기 내부에 임시 보관 중인 모든 대화 기록 및 요약 데이터가 삭제됩니다. (API Key 및 연동 설정은 안전하게 유지됩니다.)", fontSize = 13.sp) },
+                                confirmButton = {
+                                    Button(
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                                        onClick = {
+                                            showClearConfirm = false
+                                            viewModel.clearAllData()
+                                        }
+                                    ) { Text("삭제") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showClearConfirm = false }) { Text("취소") }
+                                }
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.White,
+                        titleContentColor = Color.Black
+                    ),
+                    modifier = Modifier.shadow(1.dp)
+                )
+            }
         }
     ) { innerPadding ->
         BoxWithConstraints(
@@ -770,20 +784,27 @@ fun TimelineColumn(
                         imageVector = Icons.Filled.Favorite,
                         contentDescription = "Diagnostics",
                         tint = Color(0xFFEF4444),
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(11.dp)
                     )
-                    Text("앱 진단 및 상태 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandSlate)
+                    Text(
+                        text = "시스템 상태",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandSlate,
+                        maxLines = 1,
+                        softWrap = false
+                    )
                 }
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     listOf(
                         "보관소" to (dbState == "안전보관"),
                         "네트워크" to isOnline,
                         "파서" to (parserState == "정상작동"),
-                        "AI 엔진" to (aiState != "오프라인")
+                        "AI엔진" to (aiState != "오프라인")
                     ).forEach { (label, ok) ->
                         Box(
                             modifier = Modifier
@@ -796,7 +817,7 @@ fun TimelineColumn(
                                     if (ok) Color(0xFFA7F3D0) else Color(0xFFFECACA),
                                     RoundedCornerShape(6.dp)
                                 )
-                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                                .padding(horizontal = 4.5.dp, vertical = 2.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -804,14 +825,16 @@ fun TimelineColumn(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(6.dp)
+                                        .size(5.5.dp)
                                         .background(if (ok) Color(0xFF10B981) else Color(0xFFEF4444), CircleShape)
                                 )
                                 Text(
                                     text = label,
-                                    fontSize = 9.sp,
+                                    fontSize = 8.5.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (ok) Color(0xFF065F46) else Color(0xFF991B1B)
+                                    color = if (ok) Color(0xFF065F46) else Color(0xFF991B1B),
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -1219,19 +1242,28 @@ fun TimelineItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
                         text = chatDay.date,
-                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Gray
+                        fontSize = 15.sp,
+                        color = Color(0xFF0F172A)
                     )
-                    Text(
-                        text = "${chatDay.date} 대화 기록 요약",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = BrandSlate
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "대화 요약",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF64748B)
+                        )
+                    }
                 }
                 Box(
                     modifier = Modifier
@@ -1408,6 +1440,12 @@ fun ChatRoomScreen(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberLazyListState()
 
+    if (isMobile) {
+        BackHandler(enabled = true) {
+            onBackToList()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -1418,6 +1456,7 @@ fun ChatRoomScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(KakaoHeaderBg)
+                .then(if (isMobile) Modifier.statusBarsPadding() else Modifier)
                 .padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -1677,15 +1716,27 @@ fun ChatRoomScreen(
                     modifier = Modifier
                         .weight(1f)
                         .background(Color(0xFFF1F5F9), CircleShape)
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text(
-                        text = "모든 대화 내용은 스마트폰 기기 내부에서만 안전하게 처리됩니다.",
-                        fontSize = 10.sp,
-                        color = Color(0xFF475569),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = "Safe",
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Text(
+                            text = "100% 온디바이스 로컬 안전 처리",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF475569),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
 
                 Box(
@@ -1838,17 +1889,33 @@ fun SettingsDialog(
                                 onClick = { useLocalChecked = false; useChecked = true },
                                 colors = ButtonDefaults.buttonColors(containerColor = if (!useLocalChecked && useChecked) KakaoYellow else Color(0xFFF1F5F9)),
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                             ) {
-                                Text("온라인 Gemini API", color = if (!useLocalChecked && useChecked) KakaoTextDark else Color.DarkGray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "온라인 Gemini API",
+                                    color = if (!useLocalChecked && useChecked) KakaoTextDark else Color.DarkGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                             Button(
                                 onClick = { useLocalChecked = true; useChecked = false },
                                 colors = ButtonDefaults.buttonColors(containerColor = if (useLocalChecked) BrandGreenAccent else Color(0xFFF1F5F9)),
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                             ) {
-                                Text("온디바이스 GGUF (llama.cpp)", color = if (useLocalChecked) Color.White else Color.DarkGray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "온디바이스 GGUF",
+                                    color = if (useLocalChecked) Color.White else Color.DarkGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
                     }
