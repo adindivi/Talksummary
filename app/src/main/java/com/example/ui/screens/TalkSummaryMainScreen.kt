@@ -205,57 +205,54 @@ fun TalkSummaryMainScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             if (selectedChatDay == null || isTabletOrFoldable) {
-                TopAppBar(
-                    title = {
+                var showClearConfirm by remember { mutableStateOf(false) }
+
+                Surface(
+                    color = Color.White,
+                    shadowElevation = 1.5.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(68.dp)
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .background(KakaoYellow, RoundedCornerShape(9.dp))
-                                    .padding(5.dp),
+                                    .size(38.dp)
+                                    .background(KakaoYellow, RoundedCornerShape(10.dp))
+                                    .padding(6.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.Chat,
                                     contentDescription = "Logo",
                                     tint = KakaoTextDark,
-                                    modifier = Modifier.size(17.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
-                            Column(verticalArrangement = Arrangement.Center) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "TalkSummary",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A),
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .background(Color(0xFFEFF6FF), RoundedCornerShape(5.dp))
-                                            .border(0.7.dp, Color(0xFFBFDBFE), RoundedCornerShape(5.dp))
-                                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                                    ) {
-                                        Text(
-                                            text = "내 폰 안의 AI",
-                                            fontSize = 8.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF2563EB),
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
+                            Column(
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "TalkSummary",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "복잡한 대화도 딱 3줄로 깔끔하게",
-                                    fontSize = 9.sp,
-                                    lineHeight = 11.sp,
+                                    fontSize = 11.sp,
                                     color = Color(0xFF64748B),
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 1,
@@ -263,72 +260,51 @@ fun TalkSummaryMainScreen(
                                 )
                             }
                         }
-                    },
-                    actions = {
-                        if (allChatDays.isNotEmpty()) {
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             IconButton(
-                                onClick = { viewModel.triggerBulkSummarize() },
+                                onClick = { viewModel.setShowSettings(true) },
                                 modifier = Modifier
-                                    .background(Color(0xFFFEF3C7), RoundedCornerShape(10.dp))
-                                    .size(34.dp)
+                                    .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+                                    .size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.AutoAwesome,
-                                    contentDescription = "전체 날짜 일괄 요약",
-                                    tint = Color(0xFFD97706),
-                                    modifier = Modifier.size(18.dp)
+                                    imageVector = Icons.Filled.Shield,
+                                    contentDescription = "AI 비서 및 환경 설정",
+                                    tint = Color(0xFF4F46E5),
+                                    modifier = Modifier.size(19.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
 
-                        IconButton(
-                            onClick = { viewModel.setShowSettings(true) },
-                            modifier = Modifier
-                                .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
-                                .size(34.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Shield,
-                                contentDescription = "AI 비서 및 환경 설정",
-                                tint = Color(0xFF4F46E5),
-                                modifier = Modifier.size(18.dp)
-                            )
+                            IconButton(
+                                onClick = { showClearConfirm = true },
+                                modifier = Modifier
+                                    .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                    .size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Delete,
+                                    contentDescription = "대화 기록 지우기",
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        
-                        var showClearConfirm by remember { mutableStateOf(false) }
-                        IconButton(
-                            onClick = { showClearConfirm = true },
-                            modifier = Modifier
-                                .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
-                                .size(34.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = "대화 기록 지우기",
-                                tint = Color(0xFFEF4444),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
+                    }
 
-                        if (showClearConfirm) {
-                            WarmDeleteConfirmDialog(
-                                onDismiss = { showClearConfirm = false },
-                                onConfirm = {
-                                    showClearConfirm = false
-                                    viewModel.clearAllData()
-                                }
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.White,
-                        titleContentColor = Color.Black
-                    ),
-                    modifier = Modifier.shadow(1.dp)
-                )
+                    if (showClearConfirm) {
+                        WarmDeleteConfirmDialog(
+                            onDismiss = { showClearConfirm = false },
+                            onConfirm = {
+                                showClearConfirm = false
+                                viewModel.clearAllData()
+                            }
+                        )
+                    }
+                }
             }
         }
     ) { innerPadding ->
@@ -812,92 +788,6 @@ fun TimelineColumn(
         modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // App Diagnostics Header (Highly compact to maximize timeline space for mobile layouts)
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Favorite,
-                        contentDescription = "Diagnostics",
-                        tint = Color(0xFFEF4444),
-                        modifier = Modifier.size(11.dp)
-                    )
-                    Text(
-                        text = "시스템 상태",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandSlate,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    listOf(
-                        "대화 저장소" to (dbState == "안전보관"),
-                        "인터넷" to isOnline,
-                        "대화 분석기" to (parserState == "정상작동"),
-                        "AI 비서" to (aiState != "오프라인")
-                    ).forEach { (label, ok) ->
-                        val isStorage = (label == "대화 저장소")
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (ok) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
-                                    RoundedCornerShape(6.dp)
-                                )
-                                .border(
-                                    0.5.dp,
-                                    if (ok) Color(0xFFA7F3D0) else Color(0xFFFECACA),
-                                    RoundedCornerShape(6.dp)
-                                )
-                                .then(
-                                    if (isStorage) Modifier.debouncedClickable { onOpenPrivacyModal() }
-                                    else Modifier
-                                )
-                                .padding(horizontal = 4.5.dp, vertical = 2.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(5.5.dp)
-                                        .background(if (ok) Color(0xFF10B981) else Color(0xFFEF4444), CircleShape)
-                                )
-                                Text(
-                                    text = if (isStorage) "대화 저장소 🔒" else label,
-                                    fontSize = 8.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (ok) Color(0xFF065F46) else Color(0xFF991B1B),
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         // Only show usage tip if database is empty - Reclaims massive space on mobile once files are uploaded!
         if (allChatDays.isEmpty()) {
             Card(
@@ -1030,144 +920,133 @@ fun TimelineColumn(
             }
         }
 
-        // Dates Filters Block (Optimized for Mobile with quick tactile Calendar Pickers & custom styling!)
+        // Dates Filters Block (Compact Single-Row Design)
         if (allChatDays.isNotEmpty()) {
+            val isFilterActive = startText.isNotEmpty() || endText.isNotEmpty()
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, if (isFilterActive) Color(0xFFBFDBFE) else Color(0xFFE2E8F0)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(10.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.FilterList,
-                                    contentDescription = "Search",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text("원하는 기간만 모아보기", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
-                            }
-                            // Calculate global participants of all loaded logs
-                            val totalMessages = allChatDays.sumOf { it.msgCount }
-                            Text(
-                                text = "${allChatDays.size}일 동안 나눈 ${totalMessages}개의 대화가 있어요",
-                                fontSize = 9.5.sp,
-                                color = Color(0xFF64748B),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Filled.FilterList,
+                            contentDescription = "기간 필터",
+                            tint = if (isFilterActive) Color(0xFF2563EB) else Color(0xFF64748B),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "기간",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isFilterActive) Color(0xFF1D4ED8) else BrandSlate
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Start Date selection card (taps to trigger native platform pickers)
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
-                                .border(0.8.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, if (startText.isNotEmpty()) Color(0xFF93C5FD) else Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
                             .clickable {
                                 showDatePickerDialog(context, startText) { selected ->
                                     startText = selected
                                     viewModel.setDateFilters(selected, endText)
                                 }
                             }
-                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column {
-                                    Text("시작일", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        text = startText.ifEmpty { "처음부터" },
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (startText.isNotEmpty()) Color.Black else Color.Gray
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "시작날짜 달력 선택",
-                                    tint = BrandSlate,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
+                            Text(
+                                text = startText.ifEmpty { "시작일" },
+                                fontSize = 11.sp,
+                                fontWeight = if (startText.isNotEmpty()) FontWeight.Bold else FontWeight.Normal,
+                                color = if (startText.isNotEmpty()) Color(0xFF0F172A) else Color(0xFF94A3B8),
+                                maxLines = 1
+                            )
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "시작일 선택",
+                                tint = if (startText.isNotEmpty()) Color(0xFF2563EB) else Color(0xFF94A3B8),
+                                modifier = Modifier.size(12.dp)
+                            )
                         }
+                    }
 
-                        // End Date selection card
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
-                                .border(0.8.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
+                    Text(
+                        text = "~",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF94A3B8)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, if (endText.isNotEmpty()) Color(0xFF93C5FD) else Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
                             .clickable {
                                 showDatePickerDialog(context, endText) { selected ->
                                     endText = selected
                                     viewModel.setDateFilters(startText, selected)
                                 }
                             }
-                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column {
-                                    Text("종료일", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        text = endText.ifEmpty { "오늘까지" },
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (endText.isNotEmpty()) Color.Black else Color.Gray
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "종료날짜 달력 선택",
-                                    tint = BrandSlate,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
+                            Text(
+                                text = endText.ifEmpty { "종료일" },
+                                fontSize = 11.sp,
+                                fontWeight = if (endText.isNotEmpty()) FontWeight.Bold else FontWeight.Normal,
+                                color = if (endText.isNotEmpty()) Color(0xFF0F172A) else Color(0xFF94A3B8),
+                                maxLines = 1
+                            )
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "종료일 선택",
+                                tint = if (endText.isNotEmpty()) Color(0xFF2563EB) else Color(0xFF94A3B8),
+                                modifier = Modifier.size(12.dp)
+                            )
                         }
+                    }
 
-                        // Compact Reset Button (Only shows if filter is active!)
-                        if (startText.isNotEmpty() || endText.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
+                    if (isFilterActive) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFFEF2F2), RoundedCornerShape(8.dp))
+                                .border(0.8.dp, Color(0xFFFECACA), RoundedCornerShape(8.dp))
+                                .clickable {
                                     startText = ""
                                     endText = ""
                                     viewModel.clearFilters()
-                                },
-                                modifier = Modifier
-                                    .background(Color(0xFFFEF2F2), RoundedCornerShape(8.dp))
-                                    .size(34.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "필터 초기화",
-                                    tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                                }
+                                .padding(horizontal = 7.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "초기화",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(13.dp)
+                            )
                         }
                     }
                 }
@@ -1197,6 +1076,7 @@ fun TimelineColumn(
                     color = BrandSlate
                 )
             }
+            val totalMessages = chatDays.sumOf { it.msgCount }
             Box(
                 modifier = Modifier
                     .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
@@ -1204,7 +1084,7 @@ fun TimelineColumn(
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
-                    text = "총 ${chatDays.size}일",
+                    text = "총 ${chatDays.size}일 (${totalMessages}건)",
                     fontSize = 10.sp,
                     color = BrandSlate,
                     fontWeight = FontWeight.SemiBold
