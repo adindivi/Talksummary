@@ -39,6 +39,69 @@ data class TimeSlotDistribution(
 )
 
 /**
+ * 기능 1: 선톡(First Ping) 지수 & 티키타카 속도
+ */
+data class FirstPingLeader(
+    val name: String,
+    val pingCount: Int,
+    val pingPercentage: Int
+)
+
+data class ResponseSpeedUser(
+    val name: String,
+    val avgMinutes: Int,
+    val displaySpeed: String
+)
+
+data class FirstPingAnalysis(
+    val totalSessions: Int,
+    val leaders: List<FirstPingLeader>,
+    val fastestResponder: ResponseSpeedUser?,
+    val slowestResponder: ResponseSpeedUser?,
+    val avgRoomResponseMinutes: Int
+)
+
+/**
+ * 기능 2: 말버릇(Linguistic Quirks) & 웃음 지수
+ */
+data class QuirksUser(
+    val name: String,
+    val laughCount: Int,
+    val waveCount: Int,
+    val questionCount: Int,
+    val exclamationCount: Int,
+    val mainQuirkBadge: String,
+    val topExpression: String
+)
+
+data class LinguisticQuirksReport(
+    val totalLaughCount: Int,
+    val dominantLaughType: String,
+    val users: List<QuirksUser>,
+    val funFact: String
+)
+
+/**
+ * 기능 4: 깃허브 잔디 스타일 대화 캘린더 (Talk Heatmap)
+ */
+data class DayHeatmapTile(
+    val dayOfMonth: Int,
+    val date: String,
+    val count: Int,
+    val level: Int // 0..4
+)
+
+data class TalkHeatmapData(
+    val year: Int,
+    val month: Int,
+    val totalDaysInMonth: Int,
+    val activeDaysCount: Int,
+    val activeDayPercentage: Int,
+    val tiles: List<DayHeatmapTile>,
+    val maxDayCount: Int
+)
+
+/**
  * 월간 대화 심층 분석 종합 리포트
  */
 data class MonthlyAnalysisReport(
@@ -52,5 +115,8 @@ data class MonthlyAnalysisReport(
     val timeSlotStats: TimeSlotDistribution,
     val topKeywords: List<String>,
     val chemistryTitle: String,        // "✨ 환상의 티키타카방"
-    val chemistryDescription: String  // 관계 케미 설명
+    val chemistryDescription: String,  // 관계 케미 설명
+    val firstPingStats: FirstPingAnalysis? = null,
+    val quirksReport: LinguisticQuirksReport? = null,
+    val heatmapData: TalkHeatmapData? = null
 )

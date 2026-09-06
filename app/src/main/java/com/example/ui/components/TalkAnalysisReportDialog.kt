@@ -42,11 +42,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.ChatDay
 import com.example.data.parser.ChatAnalyticsEngine
-import com.example.model.MonthlyAnalysisReport
-import com.example.model.ParticipantShare
-import com.example.model.PeakDayData
-import com.example.model.TimeSlotDistribution
+import com.example.model.*
 import com.example.ui.util.AvatarColorUtils
+import java.util.Calendar
+import java.util.Locale
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -234,6 +233,21 @@ fun TalkAnalysisReportDialog(
                             chemistryDesc = report.chemistryDescription,
                             topKeywords = report.topKeywords
                         )
+
+                        // 5. ⚡ 선톡 지수 & 티키타카 속도 카드 (기능 1)
+                        report.firstPingStats?.let { pingStats ->
+                            FirstPingSection(firstPing = pingStats)
+                        }
+
+                        // 6. 😂 말버릇 & 웃음 지수 리포트 카드 (기능 2)
+                        report.quirksReport?.let { quirks ->
+                            LinguisticQuirksSection(quirks = quirks)
+                        }
+
+                        // 7. 🟩 깃허브 잔디 스타일 대화 캘린더 카드 (기능 4)
+                        report.heatmapData?.let { heatmap ->
+                            TalkHeatmapSection(heatmap = heatmap)
+                        }
                     }
 
                     // Bottom Action Bar: KakaoTalk Share
@@ -988,6 +1002,436 @@ private fun ChemistrySection(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 5. 선톡 지수 & 티키타카 속도 카드 (기능 1)
+ */
+@Composable
+private fun FirstPingSection(firstPing: FirstPingAnalysis) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+        border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("⚡", fontSize = 15.sp)
+                Text(
+                    "선톡 지수 & 티키타카 속도",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF166534)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "이 방의 대화에 먼저 불을 지피는 사람은 누구일까?",
+                fontSize = 12.sp,
+                color = Color(0xFF15803D)
+            )
+
+            val leader = firstPing.leaders.firstOrNull()
+            if (leader != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFDCFCE7),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF86EFAC))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🥇 선톡 장인: ", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                            Text(leader.name, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF15803D))
+                        }
+                        Text(
+                            text = "${leader.pingCount}회 (${leader.pingPercentage}%)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF166534)
+                        )
+                    }
+                }
+            }
+
+            if (firstPing.leaders.size > 1) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    firstPing.leaders.drop(1).take(2).forEachIndexed { idx, p ->
+                        val medal = if (idx == 0) "🥈" else "🥉"
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = Color.White,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(0.8.dp, Color(0xFFDCFCE7))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("$medal ${p.name}", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${p.pingPercentage}%", fontSize = 11.sp, color = Color(0xFF15803D))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Speed comparison row
+            if (firstPing.fastestResponder != null || firstPing.slowestResponder != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    firstPing.fastestResponder?.let { fast ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = Color(0xFFFEF3C7),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFDE68A))
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text("⚡ 광속 칼답러", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(fast.name, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF92400E), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("평균 ${fast.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFFB45309))
+                            }
+                        }
+                    }
+
+                    firstPing.slowestResponder?.let { slow ->
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            color = Color(0xFFF1F5F9),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text("🐢 느긋한 관전자", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(slow.name, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("평균 ${slow.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFF64748B))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 6. 말버릇 & 웃음 지수 리포트 카드 (기능 2)
+ */
+@Composable
+private fun LinguisticQuirksSection(quirks: LinguisticQuirksReport) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+        border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("😂", fontSize = 15.sp)
+                Text(
+                    "말버릇 & 웃음 지수 리포트",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF92400E)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "우리 방은 'ㅋㅋㅋ'형일까, 'ㅎㅎㅎ'형일까?",
+                fontSize = 12.sp,
+                color = Color(0xFFB45309)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                color = Color(0xFFFEF3C7),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(0.8.dp, Color(0xFFFDE68A))
+            ) {
+                Text(
+                    text = quirks.funFact,
+                    fontSize = 11.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF78350F),
+                    lineHeight = 16.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+
+            if (quirks.users.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    quirks.users.forEach { u ->
+                        Surface(
+                            color = Color.White,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(0.6.dp, Color(0xFFFDE68A))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(AvatarColorUtils.getAvatarColors(u.name).first)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = u.name,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E293B),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Surface(
+                                    color = Color(0xFFFEF3C7),
+                                    shape = RoundedCornerShape(999.dp)
+                                ) {
+                                    Text(
+                                        text = u.mainQuirkBadge,
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF92400E),
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = u.topExpression,
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 7. 깃허브 잔디 스타일 대화 캘린더 카드 (기능 4)
+ */
+@Composable
+private fun TalkHeatmapSection(heatmap: TalkHeatmapData) {
+    var selectedTile by remember { mutableStateOf<DayHeatmapTile?>(null) }
+    val startDayOfWeek = remember(heatmap.year, heatmap.month) {
+        val cal = Calendar.getInstance(Locale.KOREA).apply {
+            set(Calendar.YEAR, heatmap.year)
+            set(Calendar.MONTH, heatmap.month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        (cal.get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F9FF)),
+        border = BorderStroke(1.dp, Color(0xFFBAE6FD)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("🟩", fontSize = 15.sp)
+                Text(
+                    "대화 잔디 캘린더",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0369A1)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "이번 달 ${heatmap.totalDaysInMonth}일 중 ${heatmap.activeDaysCount}일(${heatmap.activeDayPercentage}%) 동안 대화했어요",
+                fontSize = 12.sp,
+                color = Color(0xFF0284C7)
+            )
+
+            // Interactive selected tile tooltip
+            AnimatedVisibility(visible = selectedTile != null) {
+                selectedTile?.let { tile ->
+                    Column {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = Color(0xFF0284C7),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "📅 ${tile.date}: ${tile.count}건의 대화 ${if (tile.count >= 80) "🔥" else ""}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                IconButton(
+                                    onClick = { selectedTile = null },
+                                    modifier = Modifier.size(18.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "닫기",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Days of week header
+            val dayLabels = listOf("월", "화", "수", "목", "금", "토", "일")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                dayLabels.forEach { d ->
+                    Text(
+                        text = d,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF64748B),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Grid of calendar tiles
+            val leadingBlanks = (0 until startDayOfWeek).map { null }
+            val allCells = leadingBlanks + heatmap.tiles
+            val weeks = allCells.chunked(7)
+
+            weeks.forEach { week ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    for (col in 0 until 7) {
+                        val cell = week.getOrNull(col)
+                        if (cell == null) {
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1f))
+                        } else {
+                            val isSelected = selectedTile?.date == cell.date
+                            val tileBg = when (cell.level) {
+                                0 -> Color(0xFFE2E8F0)
+                                1 -> Color(0xFFBAE6FD)
+                                2 -> Color(0xFF60A5FA)
+                                3 -> Color(0xFF2563EB)
+                                else -> Color(0xFF1D4ED8)
+                            }
+                            val textColor = when {
+                                cell.level >= 2 -> Color.White
+                                cell.level == 1 -> Color(0xFF0F172A)
+                                else -> Color(0xFF94A3B8)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(tileBg)
+                                    .then(
+                                        if (isSelected) Modifier.border(2.dp, Color(0xFF0F172A), RoundedCornerShape(6.dp))
+                                        else Modifier
+                                    )
+                                    .clickable { selectedTile = cell },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${cell.dayOfMonth}",
+                                    fontSize = 9.sp,
+                                    fontWeight = if (cell.level > 0) FontWeight.Bold else FontWeight.Normal,
+                                    color = textColor
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Legend
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("적음", fontSize = 9.sp, color = Color(0xFF64748B))
+                Spacer(modifier = Modifier.width(4.dp))
+                val legendColors = listOf(
+                    Color(0xFFE2E8F0),
+                    Color(0xFFBAE6FD),
+                    Color(0xFF60A5FA),
+                    Color(0xFF2563EB),
+                    Color(0xFF1D4ED8)
+                )
+                legendColors.forEach { c ->
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(c)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                }
+                Spacer(modifier = Modifier.width(2.dp))
+                Text("많음", fontSize = 9.sp, color = Color(0xFF64748B))
             }
         }
     }

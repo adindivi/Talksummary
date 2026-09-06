@@ -204,4 +204,123 @@ class ChatAnalyticsEngineTest {
         assertEquals(100, report.timeSlotStats.nightPercent)
         assertTrue("Persona should be night owl", report.timeSlotStats.personaTitle.contains("올빼미") || report.timeSlotStats.personaTitle.contains("새벽"))
     }
+
+    @Test
+    fun testCalculateFirstPingStats() {
+        // Given: Day with two conversation sessions (separated by > 2 hours)
+        val day1 = ChatDay(
+            date = "2026-03-01",
+            messages = listOf(
+                Message("철수", "오전 09:00", "좋은 아침입니다."), // Session 1 starter: 철수
+                Message("영희", "오전 09:04", "네 안녕하세요!"), // Response time: 4m
+                Message("민수", "오전 09:20", "좋은 하루 되세요"), // Response time: 16m
+                Message("영희", "오후 02:00", "점심 드셨나요?"), // Session 2 starter (> 4h gap): 영희
+                Message("철수", "오후 02:10", "네 먹었습니다") // Response time: 10m
+            ),
+            summary = "", keywords = emptyList(), participants = listOf("철수", "영희", "민수"), msgCount = 5
+        )
+
+        // When
+        val stats = ChatAnalyticsEngine.calculateFirstPingStats(listOf(day1))
+
+        // Then: 2 sessions total
+        assertEquals(2, stats.totalSessions)
+        assertEquals(2, stats.leaders.size)
+        // 철수 and 영희 each started 1 session (50%)
+        assertEquals(50, stats.leaders[0].pingPercentage)
+        assertEquals(50, stats.leaders[1].pingPercentage)
+
+        // Response speed: 영희 answered in 4m, 철수 in 10m, 민수 in 16m
+        assertNotNull(stats.fastestResponder)
+        assertEquals("영희", stats.fastestResponder?.name)
+        assertEquals(4, stats.fastestResponder?.avgMinutes)
+        assertEquals("4분", stats.fastestResponder?.displaySpeed)
+
+        assertNotNull(stats.slowestResponder)
+        assertEquals("민수", stats.slowestResponder?.name)
+        assertEquals(16, stats.slowestResponder?.avgMinutes)
+    }
+
+    @Test
+    fun testCalculateLinguisticQuirks() {
+        // Given: Chat messages with distinct Korean linguistic quirks
+        val day = ChatDay(
+            date = "2026-03-05",
+            messages = listOf(
+                Message("철수", "10:00", "ㅋㅋㅋㅋ 대박 ㅋㅋㅋㅋ 진짜 웃기다 ㅋㅋㅋ"), // 10 'ㅋ'
+                Message("영희", "10:01", "좋은 하루 보내세요~~ 항상 감사해요~^^"), // 3 '~'
+                Message("민수", "10:02", "회의 언제 시작하나요? 장소가 어디죠? 몇 시죠??") // 4 '?'
+            ),
+            summary = "", keywords = emptyList(), participants = listOf("철수", "영희", "민수"), msgCount = 3
+        )
+
+        // When
+        val report = ChatAnalyticsEngine.calculateLinguisticQuirks(listOf(day))
+
+        // Then
+        assertEquals("ㅋㅋㅋ형", report.dominantLaughType)
+        assertTrue(report.totalLaughCount >= 10)
+        assertTrue(report.funFact.contains("ㅋㅋㅋ"))
+
+        val cheolsu = report.users.find { it.name == "철수" }
+        assertNotNull(cheolsu)
+        assertTrue(cheolsu!!.mainQuirkBadge.contains("폭소파"))
+
+        val younghee = report.users.find { it.name == "영희" }
+        assertNotNull(younghee)
+        assertTrue(younghee!!.mainQuirkBadge.contains("다정러"))
+
+        val minsu = report.users.find { it.name == "민수" }
+        assertNotNull(minsu)
+        assertTrue(minsu!!.mainQuirkBadge.contains("호기심"))
+    }
+
+    @Test
+    fun testCalculateTalkHeatmap() {
+        // Given: March 2026 (31 days) with 2 active days
+        val day1 = ChatDay("2026-03-01", emptyList(), "", emptyList(), emptyList(), 5) // level 1
+        val day2 = ChatDay("2026-03-15", emptyList(), "", emptyList(), emptyList(), 85) // level 3
+
+        // When
+        val heatmap = ChatAnalyticsEngine.calculateTalkHeatmap(2026, 3, listOf(day1, day2))
+
+        // Then
+        assertEquals(2026, heatmap.year)
+        assertEquals(3, heatmap.month)
+        assertEquals(31, heatmap.totalDaysInMonth)
+        assertEquals(31, heatmap.tiles.size)
+        assertEquals(2, heatmap.activeDaysCount)
+        assertEquals(6, heatmap.activeDayPercentage) // 2 / 31 * 100 = 6%
+
+        val tile1 = heatmap.tiles[0] // Day 1
+        assertEquals(1, tile1.dayOfMonth)
+        assertEquals(5, tile1.count)
+        assertEquals(1, tile1.level)
+
+        val tile15 = heatmap.tiles[14] // Day 15
+        assertEquals(15, tile15.dayOfMonth)
+        assertEquals(85, tile15.count)
+        assertEquals(3, tile15.level)
+
+        val tile2 = heatmap.tiles[1] // Day 2 (empty)
+        assertEquals(0, tile2.count)
+        assertEquals(0, tile2.level)
+    }
+
+    @Test
+    fun testAnalyzeMonth_IncludesAllNewCreativeFeatures() {
+        val messages = listOf(
+            Message("철수", "09:00", "시작합니다 ㅋㅋㅋ"),
+            Message("영희", "09:05", "네 반가워요~~")
+        )
+        val day = ChatDay("2026-05-10", messages, "요약", listOf("키워드"), listOf("철수", "영희"), 2)
+
+        val report = ChatAnalyticsEngine.analyzeMonth(listOf(day), "2026-05")
+
+        assertNotNull("firstPingStats should not be null", report.firstPingStats)
+        assertNotNull("quirksReport should not be null", report.quirksReport)
+        assertNotNull("heatmapData should not be null", report.heatmapData)
+        assertEquals(31, report.heatmapData?.totalDaysInMonth)
+        assertEquals(1, report.heatmapData?.activeDaysCount)
+    }
 }

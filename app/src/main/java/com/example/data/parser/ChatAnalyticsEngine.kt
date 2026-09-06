@@ -2,10 +2,7 @@ package com.example.data.parser
 
 import com.example.data.ChatDay
 import com.example.data.TalkSummaryRepository
-import com.example.model.MonthlyAnalysisReport
-import com.example.model.ParticipantShare
-import com.example.model.PeakDayData
-import com.example.model.TimeSlotDistribution
+import com.example.model.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -63,7 +60,10 @@ object ChatAnalyticsEngine {
                 ),
                 topKeywords = emptyList(),
                 chemistryTitle = "✨ 새로운 시작의 방",
-                chemistryDescription = "대화를 시작하고 서로의 케미를 발견해보세요!"
+                chemistryDescription = "대화를 시작하고 서로의 케미를 발견해보세요!",
+                firstPingStats = null,
+                quirksReport = null,
+                heatmapData = calculateTalkHeatmap(year, month, emptyList())
             )
         }
 
@@ -84,6 +84,11 @@ object ChatAnalyticsEngine {
         val topKeywords = extractTopKeywords(monthDays)
         val (chemistryTitle, chemistryDesc) = determineChemistry(participantShares, topKeywords)
 
+        // 5. 신규 창의적 기능 (1: 선톡/티키타카, 2: 말버릇/웃음, 4: 잔디 캘린더)
+        val firstPingStats = calculateFirstPingStats(monthDays)
+        val quirksReport = calculateLinguisticQuirks(monthDays)
+        val heatmapData = calculateTalkHeatmap(year, month, monthDays)
+
         return MonthlyAnalysisReport(
             yearMonthKey = selectedYearMonth,
             displayMonth = displayMonth,
@@ -95,7 +100,10 @@ object ChatAnalyticsEngine {
             timeSlotStats = timeSlotStats,
             topKeywords = topKeywords,
             chemistryTitle = chemistryTitle,
-            chemistryDescription = chemistryDesc
+            chemistryDescription = chemistryDesc,
+            firstPingStats = firstPingStats,
+            quirksReport = quirksReport,
+            heatmapData = heatmapData
         )
     }
 
@@ -357,5 +365,269 @@ object ChatAnalyticsEngine {
     private fun getCurrentYearMonth(): String {
         val cal = Calendar.getInstance()
         return "%04d-%02d".format(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1)
+    }
+
+    fun parseMinute(timeStr: String): Int? {
+        val match = Regex("""\d{1,2}:(\d{2})""").find(timeStr.trim()) ?: return null
+        return match.groupValues[1].toIntOrNull()?.coerceIn(0, 59)
+    }
+
+    private fun getEpochMinutes(dateStr: String, timeStr: String): Long {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA)
+        val dayMillis = try {
+            sdf.parse(dateStr)?.time ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+        val dayMinutes = dayMillis / (60 * 1000L)
+        val hour = parseHour(timeStr) ?: 12
+        val min = parseMinute(timeStr) ?: 0
+        return dayMinutes + (hour * 60) + min
+    }
+
+    fun calculateFirstPingStats(days: List<ChatDay>): FirstPingAnalysis {
+        val sortedDays = days.sortedBy { it.date }
+        data class MessagePoint(val epochMinutes: Long, val sender: String)
+        val allPoints = mutableListOf<MessagePoint>()
+
+        for (day in sortedDays) {
+            for (msg in day.messages) {
+                val sender = msg.sender.trim()
+                if (sender.isNotBlank() && sender != "System") {
+                    val epochMin = getEpochMinutes(day.date, msg.time)
+                    allPoints.add(MessagePoint(epochMin, sender))
+                }
+            }
+        }
+
+        if (allPoints.isEmpty()) {
+            return FirstPingAnalysis(
+                totalSessions = 0,
+                leaders = emptyList(),
+                fastestResponder = null,
+                slowestResponder = null,
+                avgRoomResponseMinutes = 0
+            )
+        }
+
+        val firstPings = mutableMapOf<String, Int>()
+        val responseTimes = mutableMapOf<String, MutableList<Int>>()
+        var lastTime: Long? = null
+        var lastSender: String? = null
+        var totalSessions = 0
+
+        for (pt in allPoints) {
+            val gap = if (lastTime != null) (pt.epochMinutes - lastTime) else 9999L
+            if (gap >= 120L) { // 2시간 이상 공백 후 시작된 첫 메시지
+                firstPings[pt.sender] = (firstPings[pt.sender] ?: 0) + 1
+                totalSessions++
+            } else if (lastSender != null && pt.sender != lastSender && gap > 0) {
+                // 발화자 전환 시 답장 소요 시간
+                if (!responseTimes.containsKey(pt.sender)) {
+                    responseTimes[pt.sender] = mutableListOf()
+                }
+                responseTimes[pt.sender]?.add(gap.toInt())
+            }
+            lastTime = pt.epochMinutes
+            lastSender = pt.sender
+        }
+
+        if (totalSessions == 0 && allPoints.isNotEmpty()) {
+            firstPings[allPoints.first().sender] = 1
+            totalSessions = 1
+        }
+
+        val leaders = firstPings.entries
+            .sortedByDescending { it.value }
+            .take(3)
+            .map {
+                val pct = if (totalSessions > 0) ((it.value.toFloat() / totalSessions) * 100f).roundToInt() else 0
+                FirstPingLeader(it.key, it.value, pct)
+            }
+
+        fun formatDuration(mins: Int): String {
+            return when {
+                mins < 1 -> "1분 미만"
+                mins < 60 -> "${mins}분"
+                else -> {
+                    val h = mins / 60
+                    val m = mins % 60
+                    if (m == 0) "${h}시간" else "${h}시간 ${m}분"
+                }
+            }
+        }
+
+        val userAvgs = responseTimes.mapValues { it.value.average().roundToInt() }
+        val fastest = userAvgs.minByOrNull { it.value }?.let {
+            ResponseSpeedUser(it.key, it.value, formatDuration(it.value))
+        }
+        val slowest = userAvgs.filter { it.key != fastest?.name }.maxByOrNull { it.value }?.let {
+            ResponseSpeedUser(it.key, it.value, formatDuration(it.value))
+        }
+        val allGaps = responseTimes.values.flatten()
+        val roomAvg = if (allGaps.isNotEmpty()) allGaps.average().roundToInt() else 0
+
+        return FirstPingAnalysis(
+            totalSessions = totalSessions,
+            leaders = leaders,
+            fastestResponder = fastest,
+            slowestResponder = slowest,
+            avgRoomResponseMinutes = roomAvg
+        )
+    }
+
+    fun calculateLinguisticQuirks(days: List<ChatDay>): LinguisticQuirksReport {
+        data class UserCounts(
+            var kCount: Int = 0,
+            var hCount: Int = 0,
+            var waveCount: Int = 0,
+            var questionCount: Int = 0,
+            var exclamCount: Int = 0,
+            var totalMsgs: Int = 0
+        )
+
+        val userMap = mutableMapOf<String, UserCounts>()
+        var roomKCount = 0
+        var roomHCount = 0
+
+        for (day in days) {
+            for (msg in day.messages) {
+                val s = msg.sender.trim()
+                if (s.isBlank() || s == "System") continue
+                val counts = userMap.getOrPut(s) { UserCounts() }
+                counts.totalMsgs++
+
+                val t = msg.text
+                val k = t.count { it == 'ㅋ' }
+                val h = t.count { it == 'ㅎ' }
+                val wave = t.count { it == '~' }
+                val q = t.count { it == '?' }
+                val ex = t.count { it == '!' }
+
+                counts.kCount += k
+                counts.hCount += h
+                counts.waveCount += wave
+                counts.questionCount += q
+                counts.exclamCount += ex
+
+                roomKCount += k
+                roomHCount += h
+            }
+        }
+
+        if (userMap.isEmpty()) {
+            return LinguisticQuirksReport(
+                totalLaughCount = 0,
+                dominantLaughType = "ㅋㅋㅋ형",
+                users = emptyList(),
+                funFact = "대화 내역이 쌓이면 말버릇과 웃음 리포트가 생성됩니다."
+            )
+        }
+
+        val totalLaugh = roomKCount + roomHCount
+        val dominantType = if (roomKCount >= roomHCount) "ㅋㅋㅋ형" else "ㅎㅎㅎ형"
+
+        val users = userMap.entries
+            .sortedByDescending { it.value.totalMsgs }
+            .take(6)
+            .map { (name, c) ->
+                val laughSum = c.kCount + c.hCount
+                val maxScore = maxOf(laughSum, c.waveCount, c.questionCount, c.exclamCount)
+
+                val (badge, topExpr) = when {
+                    maxScore == 0 ->
+                        Pair("✨ 다재다능 토커", "메시지 ${c.totalMsgs}건")
+                    maxScore == laughSum -> {
+                        if (c.kCount >= c.hCount) {
+                            Pair("😂 호탕한 폭소파", "ㅋㅋㅋ ${c.kCount}회")
+                        } else {
+                            Pair("😊 온화한 미소파", "ㅎㅎㅎ ${c.hCount}회")
+                        }
+                    }
+                    maxScore == c.waveCount ->
+                        Pair("🌊 부드러운 다정러", "말끝 물결~ ${c.waveCount}회")
+                    maxScore == c.questionCount ->
+                        Pair("❓ 호기심 요정", "물음표? ${c.questionCount}회")
+                    maxScore == c.exclamCount ->
+                        Pair("🔥 열정의 에너자이저", "느낌표! ${c.exclamCount}회")
+                    else ->
+                        Pair("✨ 다재다능 토커", "메시지 ${c.totalMsgs}건")
+                }
+
+                QuirksUser(
+                    name = name,
+                    laughCount = laughSum,
+                    waveCount = c.waveCount,
+                    questionCount = c.questionCount,
+                    exclamationCount = c.exclamCount,
+                    mainQuirkBadge = badge,
+                    topExpression = topExpr
+                )
+            }
+
+        val ratioStr = if (roomHCount > 0) {
+            String.format(Locale.KOREA, "%.1f", roomKCount.toFloat() / roomHCount)
+        } else {
+            "${roomKCount}"
+        }
+
+        val funFact = if (totalLaugh > 0) {
+            if (roomKCount >= roomHCount) {
+                "이 방은 'ㅋㅋㅋ'가 'ㅎㅎㅎ'보다 ${ratioStr}배 많은 유쾌한 'ㅋㅋㅋ형' 대화방이에요!"
+            } else {
+                "이 방은 부드러운 'ㅎㅎㅎ' 웃음이 가득한 다정한 대화방이에요!"
+            }
+        } else {
+            "차분하고 진중한 톤으로 깊이 있는 대화를 나누는 방이에요."
+        }
+
+        return LinguisticQuirksReport(
+            totalLaughCount = totalLaugh,
+            dominantLaughType = dominantType,
+            users = users,
+            funFact = funFact
+        )
+    }
+
+    fun calculateTalkHeatmap(year: Int, month: Int, days: List<ChatDay>): TalkHeatmapData {
+        val cal = Calendar.getInstance(Locale.KOREA).apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val totalDaysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+        val dayMap = days.associate { it.date to (if (it.msgCount > 0) it.msgCount else it.messages.size) }
+        val tiles = (1..totalDaysInMonth).map { day ->
+            val dateStr = "%04d-%02d-%02d".format(year, month, day)
+            val count = dayMap[dateStr] ?: 0
+            val level = when {
+                count == 0 -> 0
+                count <= 10 -> 1
+                count <= 40 -> 2
+                count <= 100 -> 3
+                else -> 4
+            }
+            DayHeatmapTile(
+                dayOfMonth = day,
+                date = dateStr,
+                count = count,
+                level = level
+            )
+        }
+
+        val activeDays = tiles.count { it.count > 0 }
+        val activePct = if (totalDaysInMonth > 0) ((activeDays.toFloat() / totalDaysInMonth) * 100f).roundToInt() else 0
+        val maxDayCount = tiles.maxOfOrNull { it.count } ?: 0
+
+        return TalkHeatmapData(
+            year = year,
+            month = month,
+            totalDaysInMonth = totalDaysInMonth,
+            activeDaysCount = activeDays,
+            activeDayPercentage = activePct,
+            tiles = tiles,
+            maxDayCount = maxDayCount
+        )
     }
 }

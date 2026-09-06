@@ -1071,14 +1071,29 @@ fun TalkSummaryMainScreen(
                         }
                     } else "참여자 데이터 없음"
 
-                    val peakText = report.peakDay?.let { peak ->
-                        "🔥 가장 뜨거웠던 날:\n${peak.displayDate} (${peak.messageCount}건, ${peak.percentageOfTotal}%)\n"
+                    val peakText = report.peakDay?.let {
+                        "🔥 가장 뜨거웠던 날: ${it.displayDate} (${it.messageCount}건, ${it.percentageOfTotal}%)\n"
+                    } ?: ""
+
+                    val pingText = report.firstPingStats?.leaders?.firstOrNull()?.let { leader ->
+                        "⚡ 선톡 장인: ${leader.name} (${leader.pingCount}회, ${leader.pingPercentage}%)\n"
+                    } ?: ""
+
+                    val quirksText = report.quirksReport?.let { q ->
+                        "😂 웃음 타입: ${q.dominantLaughType} (총 ${q.totalLaughCount}회)\n"
+                    } ?: ""
+
+                    val heatmapText = report.heatmapData?.let { h ->
+                        "🟩 대화 잔디: ${h.totalDaysInMonth}일 중 ${h.activeDaysCount}일 대화 (${h.activeDayPercentage}% 출석)\n"
                     } ?: ""
 
                     val shareText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n\n" +
                         "총 ${report.daysCount}일간 ${report.totalMessages}건의 대화 분석 결과\n\n" +
                         "🏆 이 달의 발언 랭킹:\n$podiumText\n\n" +
                         peakText + "\n" +
+                        pingText +
+                        quirksText +
+                        heatmapText + "\n" +
                         "⏰ 대화 골든타임:\n${report.timeSlotStats.personaTitle}\n${report.timeSlotStats.personaDescription}\n\n" +
                         "💫 우리들의 케미:\n${report.chemistryTitle}\n${report.chemistryDescription}\n\n" +
                         "#카카오톡대화분석 #토크서머리"
