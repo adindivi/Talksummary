@@ -609,105 +609,121 @@ fun TalkSummaryMainScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            if (selectedChatDay == null || isTabletOrFoldable) {
-                var showClearConfirm by remember { mutableStateOf(false) }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (selectedChatDay == null || isTabletOrFoldable) {
+                    var showClearConfirm by remember { mutableStateOf(false) }
 
-                Surface(
-                    color = Color.White,
-                    shadowElevation = 0.dp,
-                    border = BorderStroke(0.8.dp, AppleSurfaceBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(68.dp)
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Surface(
+                        color = Color.White,
+                        shadowElevation = 0.dp,
+                        border = BorderStroke(0.8.dp, AppleSurfaceBorder),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(68.dp)
+                                .padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(KakaoYellow, RoundedCornerShape(10.dp))
-                                    .padding(6.dp),
-                                contentAlignment = Alignment.Center
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Chat,
-                                    contentDescription = "Logo",
-                                    tint = KakaoTextDark,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(KakaoYellow, RoundedCornerShape(10.dp))
+                                        .padding(6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Chat,
+                                        contentDescription = "Logo",
+                                        tint = KakaoTextDark,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Column(
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "TalkSummary",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0F172A),
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "복잡한 대화도 딱 3줄로 깔끔하게",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF64748B),
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
                             }
-                            Column(
-                                verticalArrangement = Arrangement.Center
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = "TalkSummary",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F172A),
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "복잡한 대화도 딱 3줄로 깔끔하게",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF64748B),
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                                IconButton(
+                                    onClick = { viewModel.setShowSettings(true) },
+                                    modifier = Modifier
+                                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+                                        .size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Shield,
+                                        contentDescription = "AI 비서 및 환경 설정",
+                                        tint = Color(0xFF4F46E5),
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { showClearConfirm = true },
+                                    modifier = Modifier
+                                        .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                        .size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "대화 기록 지우기",
+                                        tint = Color(0xFFEF4444),
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
                             }
                         }
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IconButton(
-                                onClick = { viewModel.setShowSettings(true) },
-                                modifier = Modifier
-                                    .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
-                                    .size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Shield,
-                                    contentDescription = "AI 비서 및 환경 설정",
-                                    tint = Color(0xFF4F46E5),
-                                    modifier = Modifier.size(19.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { showClearConfirm = true },
-                                modifier = Modifier
-                                    .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
-                                    .size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Delete,
-                                    contentDescription = "대화 기록 지우기",
-                                    tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(19.dp)
-                                )
-                            }
+                        if (showClearConfirm) {
+                            WarmDeleteConfirmDialog(
+                                onDismiss = { showClearConfirm = false },
+                                onConfirm = {
+                                    showClearConfirm = false
+                                    viewModel.clearAllData()
+                                }
+                            )
                         }
                     }
+                }
 
-                    if (showClearConfirm) {
-                        WarmDeleteConfirmDialog(
-                            onDismiss = { showClearConfirm = false },
-                            onConfirm = {
-                                showClearConfirm = false
-                                viewModel.clearAllData()
-                            }
+                // Non-blocking Background Task Progress Bar (Slides in below Header, pushing content down naturally)
+                AnimatedVisibility(
+                    visible = activeTask != null && activeTask?.status == TaskStatus.RUNNING,
+                    enter = expandVertically(tween(250)) + fadeIn(tween(250)),
+                    exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
+                ) {
+                    if (activeTask != null) {
+                        NonBlockingTaskProgressBar(
+                            task = activeTask!!,
+                            onCancel = { viewModel.cancelActiveTask() }
                         )
                     }
                 }
@@ -1015,155 +1031,132 @@ fun TalkSummaryMainScreen(
             }
         }
 
-        // Background Task Progress & Loading Overlay Dialog
-        if (activeTask != null && activeTask?.status == TaskStatus.RUNNING) {
-            val task = activeTask!!
-            Dialog(
-                onDismissRequest = { /* Prevent dismissing on outside touch */ },
-                properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    }
+}
+
+/**
+ * Non-blocking Background Task Progress Bar
+ * Replaces the full-screen blocking Dialog so the user can freely scroll, read past summaries,
+ * and interact with the entire app while AI summarizes in the background.
+ */
+@Composable
+fun NonBlockingTaskProgressBar(
+    task: TaskProgress,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(0.8.dp, Color(0xFFCBD5E1))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            // Header Row: Title & Cancel Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Card(
-                    modifier = Modifier
-                        .widthIn(min = 280.dp, max = 340.dp)
-                        .fillMaxWidth(0.92f),
-                    shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFF2563EB),
+                        trackColor = Color(0xFFE2E8F0)
+                    )
+                    Text(
+                        text = task.title.ifEmpty { "AI 요약 진행 중" },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandSlate,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                if (task.isCancellable) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFFFEF2F2),
+                        border = BorderStroke(0.8.dp, Color(0xFFFECACA)),
+                        modifier = Modifier.clickable { onCancel() }
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(54.dp)
-                                .background(Color(0xFFF8FAFC), CircleShape),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(34.dp),
-                                strokeWidth = 3.5.dp,
-                                color = BrandSlate,
-                                trackColor = Color(0xFFE2E8F0)
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "요약 멈추기",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(11.dp)
                             )
-                        }
-
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
                             Text(
-                                text = task.title.ifEmpty { "잠시만 기다려주세요" },
+                                text = "요약 멈추기",
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = BrandSlate,
-                                textAlign = TextAlign.Center
+                                color = Color(0xFFEF4444)
                             )
-                            Text(
-                                text = task.detail.ifEmpty { "차근차근 정리하고 있어요..." },
-                                fontSize = 12.5.sp,
-                                lineHeight = 17.sp,
-                                color = Color(0xFF64748B),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        // Progress Indicator
-                        if (!task.isIndeterminate && task.total > 0) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                LinearProgressIndicator(
-                                    progress = { task.progressPercentage },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(7.dp)
-                                        .clip(RoundedCornerShape(3.5.dp)),
-                                    color = BrandGreenAccent,
-                                    trackColor = Color(0xFFE2E8F0)
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "${task.current} / ${task.total}",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF64748B)
-                                    )
-                                    Text(
-                                        text = "${task.progressPercentInt}%",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = BrandGreenAccent
-                                    )
-                                }
-                            }
-                        } else {
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(2.5.dp)),
-                                color = Color(0xFF3B82F6),
-                                trackColor = Color(0xFFE2E8F0)
-                            )
-                        }
-
-                        // Safe Background Notice Pill
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFF8FAFC),
-                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Lock,
-                                    contentDescription = "Safe",
-                                    tint = Color(0xFF64748B),
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Text(
-                                    text = "잠시 다른 앱을 보고 오셔도 작업이 계속돼요",
-                                    fontSize = 10.5.sp,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-                        }
-
-                        // Cancel Button
-                        if (task.isCancellable) {
-                            OutlinedButton(
-                                onClick = { viewModel.cancelActiveTask() },
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
-                                border = BorderStroke(1.dp, Color(0xFFFCA5A5)),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancel",
-                                    modifier = Modifier.size(15.dp),
-                                    tint = Color(0xFFEF4444)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "요약 멈추기",
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFEF4444)
-                                )
-                            }
                         }
                     }
                 }
+            }
+
+            // Detail description (date, word count, tokens/sec)
+            if (task.detail.isNotEmpty()) {
+                Text(
+                    text = task.detail,
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Live progress bar
+            if (!task.isIndeterminate && task.total > 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    LinearProgressIndicator(
+                        progress = { task.progressPercentage },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = BrandGreenAccent,
+                        trackColor = Color(0xFFE2E8F0)
+                    )
+                    Text(
+                        text = "${task.progressPercentInt}%",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandGreenAccent
+                    )
+                }
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.5.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = Color(0xFF3B82F6),
+                    trackColor = Color(0xFFE2E8F0)
+                )
             }
         }
     }
