@@ -63,6 +63,8 @@ import kotlinx.coroutines.launch
 import com.example.data.parser.StoryGenerator
 import com.example.model.TalkStoryResult
 import com.example.ui.components.TalkStoryCarouselDialog
+import com.example.ui.components.TalkAnalysisReportDialog
+import com.example.data.parser.ChatAnalyticsEngine
 import com.example.ui.util.AvatarColorUtils
 import android.content.Intent
 import java.io.File
@@ -620,6 +622,8 @@ fun TalkSummaryMainScreen(
     var showPermissionRationale by remember { mutableStateOf(false) }
     var showPrivacyModal by remember { mutableStateOf(false) }
     var activeStoryChatDay by remember { mutableStateOf<ChatDay?>(null) }
+    var showAnalysisReportModal by remember { mutableStateOf(false) }
+    var analysisInitialYearMonth by remember { mutableStateOf<String?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -799,6 +803,10 @@ fun TalkSummaryMainScreen(
                         aiState = aiState,
                         modifier = Modifier.weight(timelineWeight),
                         onImportFileClick = { filePickerLauncher.launch("text/plain") },
+                        onOpenAnalysisClick = { targetYm ->
+                            analysisInitialYearMonth = targetYm
+                            showAnalysisReportModal = true
+                        },
                         onPasteTextClick = { viewModel.setShowPasteModal(true) },
                         onOpenPrivacyModal = { showPrivacyModal = true },
                         onOpenStory = { cd -> activeStoryChatDay = cd }
@@ -894,6 +902,10 @@ fun TalkSummaryMainScreen(
                             aiState = aiState,
                             modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
                             onImportFileClick = { filePickerLauncher.launch("text/plain") },
+                            onOpenAnalysisClick = { targetYm ->
+                                analysisInitialYearMonth = targetYm
+                                showAnalysisReportModal = true
+                            },
                             onPasteTextClick = { viewModel.setShowPasteModal(true) },
                             onOpenPrivacyModal = { showPrivacyModal = true },
                             onOpenStory = { cd -> activeStoryChatDay = cd }
@@ -1032,6 +1044,49 @@ fun TalkSummaryMainScreen(
                         putExtra(Intent.EXTRA_TEXT, shareText)
                     }
                     context.startActivity(Intent.createChooser(sendIntent, "3장 스토리 카톡 공유"))
+                }
+            )
+        }
+
+        // Toss-Style Monthly KakaoTalk Deep Analysis Report Dialog
+        if (showAnalysisReportModal) {
+            TalkAnalysisReportDialog(
+                chatDays = allChatDays,
+                initialYearMonth = analysisInitialYearMonth,
+                onDismiss = {
+                    showAnalysisReportModal = false
+                    analysisInitialYearMonth = null
+                },
+                onShareReport = { report ->
+                    val podiumText = if (report.participantShares.isNotEmpty()) {
+                        report.participantShares.take(3).joinToString("\n") { share ->
+                            val icon = when (share.rank) {
+                                1 -> "🥇"
+                                2 -> "🥈"
+                                3 -> "🥉"
+                                else -> "⚡"
+                            }
+                            "$icon ${share.name} (${share.count}건, ${share.percentage}%) - ${share.badge}"
+                        }
+                    } else "참여자 데이터 없음"
+
+                    val peakText = report.peakDay?.let { peak ->
+                        "🔥 가장 뜨거웠던 날:\n${peak.displayDate} (${peak.messageCount}건, ${peak.percentageOfTotal}%)\n"
+                    } ?: ""
+
+                    val shareText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n\n" +
+                        "총 ${report.daysCount}일간 ${report.totalMessages}건의 대화 분석 결과\n\n" +
+                        "🏆 이 달의 발언 랭킹:\n$podiumText\n\n" +
+                        peakText + "\n" +
+                        "⏰ 대화 골든타임:\n${report.timeSlotStats.personaTitle}\n${report.timeSlotStats.personaDescription}\n\n" +
+                        "💫 우리들의 케미:\n${report.chemistryTitle}\n${report.chemistryDescription}\n\n" +
+                        "#카카오톡대화분석 #토크서머리"
+
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(Intent.createChooser(sendIntent, "카톡 대화 분석 리포트 공유"))
                 }
             )
         }
@@ -1244,6 +1299,7 @@ fun TimelineColumn(
     aiState: String,
     modifier: Modifier = Modifier,
     onImportFileClick: () -> Unit,
+    onOpenAnalysisClick: (String?) -> Unit = {},
     onPasteTextClick: () -> Unit = {},
     onOpenPrivacyModal: () -> Unit = {},
     onOpenStory: (ChatDay) -> Unit = {}
@@ -1297,10 +1353,11 @@ fun TimelineColumn(
                             modifier = Modifier
                                 .weight(1.0f)
                                 .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(10.dp))
+                                .clickable { onPasteTextClick() }
                                 .padding(8.dp)
                         ) {
                             Text(
-                                text = "📂 1. 대화 파일 선택\n하단의 [카톡 .txt 열기] 버튼을 눌러 내보낸 카카오톡 대화 내용(.txt)을 불러옵니다.",
+                                text = "📂 1. 대화 파일 / 붙여넣기\n[대화 파일 열기] 또는 여기를 눌러 복사한 대화를 직접 붙여넣어 시작합니다.",
                                 fontSize = 9.5.sp,
                                 lineHeight = 14.sp,
                                 color = Color(0xFF78350F)
@@ -1324,7 +1381,7 @@ fun TimelineColumn(
             }
         }
 
-        // Upload Buttons Zone (Apple Signature 44dp Pill Buttons: Filled Primary + Outline Secondary)
+        // Upload & Analysis Buttons Zone (Apple Signature 44dp Pill Buttons: Filled KakaoYellow + Toss Indigo)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1363,14 +1420,20 @@ fun TimelineColumn(
             }
 
             Button(
-                onClick = onPasteTextClick,
+                onClick = {
+                    if (allChatDays.isEmpty()) {
+                        viewModel.showToast("먼저 대화 파일을 불러와 주세요", "info")
+                    } else {
+                        onOpenAnalysisClick(null)
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = BrandSlate
+                    containerColor = Color(0xFF2563EB),
+                    contentColor = Color.White
                 ),
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                 shape = RoundedCornerShape(999.dp),
-                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                border = BorderStroke(1.dp, Color(0xFF1D4ED8)),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -1381,17 +1444,17 @@ fun TimelineColumn(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ContentPaste,
-                        contentDescription = "Paste Text",
-                        tint = BrandSlate,
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Filled.BarChart,
+                        contentDescription = "분석 리포트",
+                        tint = Color.White,
+                        modifier = Modifier.size(17.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "대화 붙여넣기",
+                        "나의 카톡 분석하기",
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = BrandSlate,
+                        color = Color.White,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -1672,6 +1735,9 @@ fun TimelineColumn(
                                         monthData = monthData,
                                         onViewDays = {
                                             viewModel.filterByYearMonth(monthData.yearMonthKey)
+                                        },
+                                        onOpenAnalysis = { ym ->
+                                            onOpenAnalysisClick(ym)
                                         }
                                     )
                                 }
@@ -2210,6 +2276,7 @@ fun GalaxySegmentedSwitcher(
 fun MonthSummaryCard(
     monthData: MonthGroupData,
     onViewDays: () -> Unit,
+    onOpenAnalysis: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -2253,18 +2320,44 @@ fun MonthSummaryCard(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
-                        .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = "💬 ${monthData.daysCount}일간 (${monthData.totalMessages}건)",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF475569)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, Color(0xFFBFDBFE), RoundedCornerShape(8.dp))
+                            .clickable { onOpenAnalysis(monthData.yearMonthKey) }
+                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text("📊", fontSize = 10.sp)
+                            Text(
+                                text = "분석",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1D4ED8)
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                    ) {
+                        Text(
+                            text = "💬 ${monthData.daysCount}일간 (${monthData.totalMessages}건)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF475569)
+                        )
+                    }
                 }
             }
 
