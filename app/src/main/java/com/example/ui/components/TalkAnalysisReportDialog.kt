@@ -603,20 +603,37 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                                     selectedShare = if (selectedShare?.name == share.name) null else share
                                 }
                                 .padding(horizontal = 10.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Left: Rank + Avatar + Name + Compact Badge
+                            // Left: Rank + Avatar + Name
                             Row(
-                                modifier = Modifier.weight(1f, fill = false),
+                                modifier = Modifier.weight(1f),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(
-                                    text = rankIcon,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.width(20.dp)
-                                )
+                                Box(
+                                    modifier = Modifier.width(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (share.rank <= 3) {
+                                        Text(
+                                            text = when (share.rank) {
+                                                1 -> "🥇"
+                                                2 -> "🥈"
+                                                3 -> "🥉"
+                                                else -> ""
+                                            },
+                                            fontSize = 14.sp
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "${share.rank}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+                                }
 
                                 Box(
                                     modifier = Modifier
@@ -643,53 +660,66 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                                     softWrap = false,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
+                            }
 
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            // Right: Badge (Fixed Column) + Count (Fixed Min Width) + Pill % (Fixed Min Width)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 if (shortBadge.isNotEmpty()) {
                                     Surface(
                                         color = colorPair.first,
                                         shape = RoundedCornerShape(4.dp),
-                                        border = BorderStroke(0.5.dp, colorPair.second.copy(alpha = 0.25f))
+                                        border = BorderStroke(0.5.dp, colorPair.second.copy(alpha = 0.25f)),
+                                        modifier = Modifier.width(46.dp)
                                     ) {
-                                        Text(
-                                            text = shortBadge,
-                                            fontSize = 9.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colorPair.second,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                                        )
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = shortBadge,
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colorPair.second,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
                                     }
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // Right: Count + Pill %
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
                                 Text(
                                     text = "${share.count}건",
                                     fontSize = 11.5.sp,
                                     color = Color(0xFF64748B),
+                                    textAlign = TextAlign.End,
                                     maxLines = 1,
-                                    softWrap = false
+                                    softWrap = false,
+                                    modifier = Modifier.widthIn(min = 36.dp)
                                 )
+
                                 Surface(
                                     color = if (share.rank == 1) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
-                                    shape = RoundedCornerShape(6.dp)
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.widthIn(min = 34.dp)
                                 ) {
-                                    Text(
-                                        text = "${share.percentage}%",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (share.rank == 1) Color(0xFF2563EB) else Color(0xFF475569),
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                    )
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${share.percentage}%",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (share.rank == 1) Color(0xFF2563EB) else Color(0xFF475569),
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
                                 }
                             }
                         }
