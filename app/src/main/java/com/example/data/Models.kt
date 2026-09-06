@@ -69,7 +69,7 @@ fun groupChatDaysByMonth(chatDays: List<ChatDay>): List<MonthGroupData> {
 
             val topKeywords = sortedDays
                 .flatMap { it.keywords }
-                .filter { it.isNotBlank() }
+                .filter { it.isNotBlank() && !TalkSummaryRepository.isStopWord(it) }
                 .groupingBy { it }
                 .eachCount()
                 .entries
@@ -129,7 +129,7 @@ fun groupChatDaysByYear(chatDays: List<ChatDay>): List<YearGroupData> {
 
             val topKeywords = sortedDays
                 .flatMap { it.keywords }
-                .filter { it.isNotBlank() }
+                .filter { it.isNotBlank() && !TalkSummaryRepository.isStopWord(it) }
                 .groupingBy { it }
                 .eachCount()
                 .entries
