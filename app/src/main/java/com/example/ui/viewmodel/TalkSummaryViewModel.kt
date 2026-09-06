@@ -122,6 +122,10 @@ class TalkSummaryViewModel(
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing = _isProcessing.asStateFlow()
 
+    // Currently summarizing date for in-card progress display
+    private val _activeSummarizingDate = MutableStateFlow<String?>(null)
+    val activeSummarizingDate: StateFlow<String?> = _activeSummarizingDate.asStateFlow()
+
     // Last detailed error info for user-friendly guidance
     private val _lastErrorInfo = MutableStateFlow<com.example.data.api.GeminiErrorInfo?>(null)
     val lastErrorInfo = _lastErrorInfo.asStateFlow()
@@ -381,6 +385,7 @@ class TalkSummaryViewModel(
             modelLoader.stopInference()
             backgroundTaskManager.cancelTask(reason)
             InferenceForegroundService.stop(getApplication())
+            _activeSummarizingDate.value = null
             _isProcessing.value = false
             showToast(reason, "info")
         }
@@ -676,6 +681,7 @@ $serialized
         val message = if (useLocal) "${chatDay.date} 핵심 대화를 오프라인으로 요약하고 있어요..." else "${chatDay.date} 핵심 대화를 똑똑하게 요약하고 있어요..."
 
         _isProcessing.value = true
+        _activeSummarizingDate.value = chatDay.date
 
         viewModelScope.launch {
             backgroundTaskManager.startTask(
@@ -773,6 +779,7 @@ $serialized
                 showError("요약 중 문제가 생겼어요", "대화를 요약하는 도중 문제가 발생했어요: ${e.localizedMessage}")
             } finally {
                 InferenceForegroundService.stop(getApplication())
+                _activeSummarizingDate.value = null
                 _isProcessing.value = false
             }
         }

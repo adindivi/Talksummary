@@ -539,6 +539,7 @@ fun TalkSummaryMainScreen(
 
     // Background Tasks, Loading & Toasts
     val activeTask by viewModel.activeTask.collectAsStateWithLifecycle()
+    val activeSummarizingDate by viewModel.activeSummarizingDate.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val loadingTitle by viewModel.loadingTitle.collectAsStateWithLifecycle()
     val loadingMessage by viewModel.loadingMessage.collectAsStateWithLifecycle()
@@ -714,9 +715,9 @@ fun TalkSummaryMainScreen(
                     }
                 }
 
-                // Non-blocking Background Task Progress Bar (Slides in below Header, pushing content down naturally)
+                // Non-blocking Background Task Progress Bar (Slides in below Header for global tasks, suppressed when summarizing within a card)
                 AnimatedVisibility(
-                    visible = activeTask != null && activeTask?.status == TaskStatus.RUNNING,
+                    visible = activeTask != null && activeTask?.status == TaskStatus.RUNNING && activeSummarizingDate == null,
                     enter = expandVertically(tween(250)) + fadeIn(tween(250)),
                     exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
                 ) {
@@ -1185,6 +1186,9 @@ fun TimelineColumn(
     var endText by remember(endDateFilter) { mutableStateOf(endDateFilter) }
     var isCalendarExpanded by remember { mutableStateOf(false) }
 
+    val activeSummarizingDate by viewModel.activeSummarizingDate.collectAsStateWithLifecycle()
+    val activeTask by viewModel.activeTask.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1542,8 +1546,12 @@ fun TimelineColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(chatDays, key = { it.date }) { chatDay ->
+                    val isSummarizing = (activeSummarizingDate == chatDay.date && activeTask?.status == TaskStatus.RUNNING)
                     TimelineItemCard(
                         chatDay = chatDay,
+                        isSummarizing = isSummarizing,
+                        activeTask = if (isSummarizing) activeTask else null,
+                        onCancelTask = { viewModel.cancelActiveTask() },
                         onSelect = { viewModel.selectChatDay(chatDay) },
                         onAIPress = { viewModel.triggerSingleSummarize(chatDay) },
                         onCopySummary = { text ->
@@ -1557,40 +1565,85 @@ fun TimelineColumn(
     }
 }
 
-// TIMELINE CARD INDIVIDUAL COMPONENT (Streamlined Flat Layout: No Inner Box, Zero Redundant Badges, Slim Margins)
+// TIMELINE CARD INDIVIDUAL COMPONENT (Streamlined Flat Layout with Inline Live Progress & Apple-Style Pill Button)
 @Composable
 fun TimelineItemCard(
     chatDay: ChatDay,
     onSelect: () -> Unit,
     onAIPress: () -> Unit,
-    onCopySummary: (String) -> Unit = {}
+    onCopySummary: (String) -> Unit = {},
+    isSummarizing: Boolean = false,
+    activeTask: TaskProgress? = null,
+    onCancelTask: () -> Unit = {}
 ) {
     val isAISummarized = chatDay.summary.startsWith("[AI 정밀 요약]")
 
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isAISummarized) Color(0xFFFAF8FF) else Color.White
+            containerColor = when {
+                isSummarizing -> Color(0xFFF8FAFF)
+                isAISummarized -> Color(0xFFFAF8FF)
+                else -> Color.White
+            }
         ),
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, if (isAISummarized) Color(0xFFE9D5FF) else AppleSurfaceBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(
+            1.dp,
+            when {
+                isSummarizing -> Color(0xFF818CF8)
+                isAISummarized -> Color(0xFFE9D5FF)
+                else -> AppleSurfaceBorder
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSummarizing) 1.dp else 0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onSelect)
+            .clickable(enabled = !isSummarizing, onClick = onSelect)
     ) {
         Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp)) {
-            // Header Row: Date + Message Count (Redundant [대화 요약] badge completely removed!)
+            // Header Row: Date + Status Badge + Message Count
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = chatDay.date,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = Color(0xFF0F172A)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = chatDay.date,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                    if (isSummarizing) {
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xFFEEF2FF),
+                            border = BorderStroke(0.6.dp, Color(0xFFC7D2FE))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = Color(0xFF4F46E5),
+                                    trackColor = Color(0xFFE0E7FF)
+                                )
+                                Text(
+                                    text = "작성 중",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF4338CA)
+                                )
+                            }
+                        }
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
@@ -1608,79 +1661,174 @@ fun TimelineItemCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // AI 3줄 요약 Title Bar & Copy Button (Flat without nested box / '대화 둘러보기' removed)
-            if (isAISummarized) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            // AI 3줄 요약 Title Bar & Copy Button (Shown when not currently in active summarizing mode)
+            if (!isSummarizing) {
+                if (isAISummarized) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.AutoAwesome,
-                            contentDescription = "AI 요약본",
-                            tint = Color(0xFF7C3AED),
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "AI 핵심 3줄 요약",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF7C3AED)
-                        )
-                    }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = "AI 요약본",
+                                tint = Color(0xFF7C3AED),
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "AI 핵심 3줄 요약",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7C3AED)
+                            )
+                        }
 
-                    IconButton(
-                        onClick = {
-                            val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
-                            onCopySummary(cleanText)
-                        },
-                        modifier = Modifier.size(22.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "요약 복사",
-                            tint = Color(0xFF7C3AED),
-                            modifier = Modifier.size(13.dp)
-                        )
+                        IconButton(
+                            onClick = {
+                                val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
+                                onCopySummary(cleanText)
+                            },
+                            modifier = Modifier.size(22.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "요약 복사",
+                                tint = Color(0xFF7C3AED),
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
                     }
-                }
-                Spacer(modifier = Modifier.height(3.dp))
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = {
-                            val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
-                            onCopySummary(cleanText)
-                        },
-                        modifier = Modifier.size(20.dp)
+                    Spacer(modifier = Modifier.height(3.dp))
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "요약 복사",
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(12.dp)
-                        )
+                        IconButton(
+                            onClick = {
+                                val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
+                                onCopySummary(cleanText)
+                            },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "요약 복사",
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            // Summary Content: Wide, breathable layout without nested box constraints
-            Text(
-                text = chatDay.summary.replace("[AI 정밀 요약]\n", ""),
-                fontSize = 12.sp,
-                color = if (isAISummarized) Color(0xFF1E1B4B) else Color(0xFF334155),
-                lineHeight = 18.5.sp,
-                letterSpacing = (-0.2).sp,
-                fontWeight = if (isAISummarized) FontWeight.Medium else FontWeight.Normal
-            )
+            // Summary Content or In-Card Live Progress Indicator
+            if (isSummarizing && activeTask != null) {
+                Card(
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5FD)),
+                    border = BorderStroke(0.8.dp, Color(0xFFC7D2FE)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = activeTask.detail.ifEmpty { "AI 핵심 3줄 요약을 작성하고 있어요..." },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF1E1B4B),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(end = 6.dp)
+                            )
+
+                            // Cancel Button
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = Color(0xFFFEF2F2),
+                                border = BorderStroke(0.8.dp, Color(0xFFFECACA)),
+                                modifier = Modifier.clickable { onCancelTask() }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "요약 멈추기",
+                                        tint = Color(0xFFEF4444),
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Text(
+                                        text = "멈추기",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFEF4444)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Linear progress indicator
+                        if (!activeTask.isIndeterminate && activeTask.total > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { activeTask.progressPercentage },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(4.dp)
+                                        .clip(RoundedCornerShape(2.dp)),
+                                    color = Color(0xFF4F46E5),
+                                    trackColor = Color(0xFFE0E7FF)
+                                )
+                                Text(
+                                    text = "${activeTask.progressPercentInt}%",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF4F46E5)
+                                )
+                            }
+                        } else {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(3.5.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = Color(0xFF4F46E5),
+                                trackColor = Color(0xFFE0E7FF)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = chatDay.summary.replace("[AI 정밀 요약]\n", ""),
+                    fontSize = 12.sp,
+                    color = if (isAISummarized) Color(0xFF1E1B4B) else Color(0xFF334155),
+                    lineHeight = 18.5.sp,
+                    letterSpacing = (-0.2).sp,
+                    fontWeight = if (isAISummarized) FontWeight.Medium else FontWeight.Normal
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -1715,33 +1863,62 @@ fun TimelineItemCard(
                     }
                 }
 
-                Button(
-                    onClick = onAIPress,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
-                        contentColor = if (isAISummarized) BrandSlate else Color.White
-                    ),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                    shape = RoundedCornerShape(999.dp),
-                    border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                    modifier = Modifier.height(30.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                if (isSummarizing) {
+                    // While summarizing, show an Apple-style pulsating Pill indicating work in progress
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFFEEF2FF),
+                        border = BorderStroke(1.dp, Color(0xFFC7D2FE)),
+                        modifier = Modifier.height(30.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isAISummarized) Icons.Default.Refresh else Icons.Filled.Star,
-                            contentDescription = "요약 실행",
-                            tint = if (isAISummarized) BrandSlate else Color.White,
-                            modifier = Modifier.size(11.dp)
-                        )
-                        Text(
-                            text = if (isAISummarized) "다시 요약" else "AI 3줄 요약",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                strokeWidth = 1.8.dp,
+                                color = Color(0xFF4F46E5),
+                                trackColor = Color(0xFFE0E7FF)
+                            )
+                            Text(
+                                text = "요약 중...",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4338CA)
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onAIPress,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
+                            contentColor = if (isAISummarized) BrandSlate else Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isAISummarized) Icons.Default.Refresh else Icons.Filled.Star,
+                                contentDescription = "요약 실행",
+                                tint = if (isAISummarized) BrandSlate else Color.White,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = if (isAISummarized) "다시 요약" else "AI 3줄 요약",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
