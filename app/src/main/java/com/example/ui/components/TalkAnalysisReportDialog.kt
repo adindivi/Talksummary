@@ -183,7 +183,7 @@ private fun ReportHeader(
                     colors = listOf(Color(0xFFEFF6FF), Color(0xFFF8FAFC))
                 )
             )
-            .padding(top = 18.dp, bottom = 12.dp, start = 18.dp, end = 18.dp)
+            .padding(top = 16.dp, bottom = 10.dp, start = 18.dp, end = 18.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -196,11 +196,11 @@ private fun ReportHeader(
                     shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
-                        text = "📊 월간 카톡 분석 리포트",
-                        fontSize = 11.5.sp,
+                        text = "📊 카톡 분석",
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1D4ED8),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
@@ -217,11 +217,11 @@ private fun ReportHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = "${report.displayMonth} 대화 분석",
-                fontSize = 20.sp,
+                fontSize = 19.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color(0xFF0F172A)
             )
@@ -229,8 +229,8 @@ private fun ReportHeader(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "${report.daysCount}일간 총 ${report.totalMessages}건의 소중한 대화 기록",
-                fontSize = 12.5.sp,
+                text = "${report.daysCount}일간 총 ${report.totalMessages}건의 대화 기록이에요",
+                fontSize = 12.sp,
                 color = Color(0xFF64748B)
             )
 
@@ -314,7 +314,7 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(16.dp)
+                        .height(12.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .background(Color(0xFFE2E8F0))
                 ) {
@@ -331,82 +331,120 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Top Talkers List
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    participantShares.take(4).forEach { share ->
+                // Top Talkers List — bulletproof single-line SpaceBetween layout
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    participantShares.take(5).forEach { share ->
                         val colorPair = AvatarColorUtils.getAvatarColors(share.name)
-                        val (rankIcon, medalColor) = when (share.rank) {
-                            1 -> Pair("🥇", Color(0xFFF59E0B))
-                            2 -> Pair("🥈", Color(0xFF94A3B8))
-                            3 -> Pair("🥉", Color(0xFFD97706))
-                            else -> Pair("⚡", Color(0xFF64748B))
+                        val rankIcon = when (share.rank) {
+                            1 -> "🥇"
+                            2 -> "🥈"
+                            3 -> "🥉"
+                            else -> "  "
+                        }
+                        val shortBadge = when (share.rank) {
+                            1 -> "수다왕"
+                            2 -> "조율자"
+                            3 -> "분위기"
+                            else -> ""
                         }
 
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(Color.White, RoundedCornerShape(12.dp))
-                                .border(1.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .border(0.8.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(rankIcon, fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            // Avatar Circle
-                            Box(
-                                modifier = Modifier
-                                    .size(26.dp)
-                                    .clip(CircleShape)
-                                    .background(colorPair.first),
-                                contentAlignment = Alignment.Center
+                            // Left: Rank + Avatar + Name + Compact Badge
+                            Row(
+                                modifier = Modifier.weight(1f, fill = false),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = share.name.take(1),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorPair.second
+                                    text = rankIcon,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.width(20.dp)
                                 )
-                            }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(CircleShape)
+                                        .background(colorPair.first),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = share.name,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF1E293B),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        text = share.name.take(1),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorPair.second
                                     )
+                                }
+
+                                Text(
+                                    text = share.name,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF1E293B),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+
+                                if (shortBadge.isNotEmpty()) {
                                     Surface(
-                                        color = colorPair.first.copy(alpha = 0.7f),
-                                        shape = RoundedCornerShape(4.dp)
+                                        color = colorPair.first,
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = BorderStroke(0.5.dp, colorPair.second.copy(alpha = 0.25f))
                                     ) {
                                         Text(
-                                            text = share.badge,
+                                            text = shortBadge,
                                             fontSize = 9.5.sp,
-                                            fontWeight = FontWeight.Medium,
+                                            fontWeight = FontWeight.Bold,
                                             color = colorPair.second,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                                         )
                                     }
                                 }
                             }
 
-                            Text(
-                                text = "${share.count}건 (${share.percentage}%)",
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (share.rank == 1) Color(0xFF2563EB) else Color(0xFF475569)
-                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Right: Count + Pill %
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "${share.count}건",
+                                    fontSize = 11.5.sp,
+                                    color = Color(0xFF64748B),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Surface(
+                                    color = if (share.rank == 1) Color(0xFFEFF6FF) else Color(0xFFF1F5F9),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "${share.percentage}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (share.rank == 1) Color(0xFF2563EB) else Color(0xFF475569),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -442,27 +480,44 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = peakDay.displayDate,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFFC2410C)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = peakDay.displayDate,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFC2410C)
+                )
+                Surface(
+                    color = Color(0xFFFFEDD5),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = "${peakDay.percentageOfTotal}% 집중",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFC2410C),
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "이날 하루에만 ${peakDay.messageCount}건(전체의 ${peakDay.percentageOfTotal}%)의 대화가 쏟아졌어요!",
-                fontSize = 12.5.sp,
+                text = "이날 하루에만 ${peakDay.messageCount}건의 대화가 쏟아졌어요!",
+                fontSize = 12.sp,
                 color = Color(0xFF9A3412),
-                lineHeight = 17.sp
+                lineHeight = 16.sp
             )
 
             if (peakDay.peakKeywords.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     peakDay.peakKeywords.forEach { kw ->
                         Surface(
@@ -471,7 +526,7 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
                         ) {
                             Text(
                                 text = "#$kw",
-                                fontSize = 11.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFFC2410C),
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -499,6 +554,13 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
  */
 @Composable
 private fun TimeSlotPersonaSection(timeStats: TimeSlotDistribution) {
+    val maxPct = maxOf(
+        timeStats.morningPercent,
+        timeStats.afternoonPercent,
+        timeStats.eveningPercent,
+        timeStats.nightPercent
+    )
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
         border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
@@ -539,7 +601,7 @@ private fun TimeSlotPersonaSection(timeStats: TimeSlotDistribution) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 4 Time slots breakdown
+            // 4 Time slots breakdown with max highlight
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -548,25 +610,29 @@ private fun TimeSlotPersonaSection(timeStats: TimeSlotDistribution) {
                     modifier = Modifier.weight(1f),
                     label = "아침",
                     timeRange = "06~12시",
-                    pct = timeStats.morningPercent
+                    pct = timeStats.morningPercent,
+                    isMax = timeStats.morningPercent == maxPct && maxPct > 0
                 )
                 TimeSlotCell(
                     modifier = Modifier.weight(1f),
                     label = "낮",
                     timeRange = "12~18시",
-                    pct = timeStats.afternoonPercent
+                    pct = timeStats.afternoonPercent,
+                    isMax = timeStats.afternoonPercent == maxPct && maxPct > 0
                 )
                 TimeSlotCell(
                     modifier = Modifier.weight(1f),
                     label = "저녁",
                     timeRange = "18~24시",
-                    pct = timeStats.eveningPercent
+                    pct = timeStats.eveningPercent,
+                    isMax = timeStats.eveningPercent == maxPct && maxPct > 0
                 )
                 TimeSlotCell(
                     modifier = Modifier.weight(1f),
                     label = "심야",
                     timeRange = "00~06시",
-                    pct = timeStats.nightPercent
+                    pct = timeStats.nightPercent,
+                    isMax = timeStats.nightPercent == maxPct && maxPct > 0
                 )
             }
         }
@@ -578,26 +644,36 @@ private fun TimeSlotCell(
     modifier: Modifier = Modifier,
     label: String,
     timeRange: String,
-    pct: Int
+    pct: Int,
+    isMax: Boolean = false
 ) {
     Surface(
         modifier = modifier,
-        color = Color.White,
+        color = if (isMax) Color(0xFFDCFCE7) else Color.White,
         shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, Color(0xFFDCFCE7))
+        border = BorderStroke(1.dp, if (isMax) Color(0xFF86EFAC) else Color(0xFFE2E8F0))
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+            modifier = Modifier.padding(vertical = 7.dp, horizontal = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
-            Text(timeRange, fontSize = 9.sp, color = Color(0xFF86EFAC))
-            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isMax) Color(0xFF15803D) else Color(0xFF334155)
+            )
+            Text(
+                timeRange,
+                fontSize = 8.5.sp,
+                color = if (isMax) Color(0xFF166534) else Color(0xFF94A3B8)
+            )
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 "${pct}%",
-                fontSize = 13.sp,
+                fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = if (pct >= 35) Color(0xFF15803D) else Color(0xFF475569)
+                color = if (isMax) Color(0xFF15803D) else Color(0xFF475569)
             )
         }
     }
@@ -625,7 +701,7 @@ private fun ChemistrySection(
             ) {
                 Text("💫", fontSize = 15.sp)
                 Text(
-                    "이 달의 대화 분위기 & 관계 케미",
+                    "우리들의 대화 분위기 & 관계 케미",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF6B21A8)
@@ -636,7 +712,7 @@ private fun ChemistrySection(
 
             Text(
                 text = chemistryTitle,
-                fontSize = 15.5.sp,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color(0xFF7E22CE)
             )
@@ -651,7 +727,7 @@ private fun ChemistrySection(
             )
 
             if (topKeywords.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -662,14 +738,14 @@ private fun ChemistrySection(
                         Surface(
                             color = Color(0xFFF3E8FF),
                             shape = RoundedCornerShape(999.dp),
-                            border = BorderStroke(1.dp, Color(0xFFDDD6FE))
+                            border = BorderStroke(0.6.dp, Color(0xFFDDD6FE))
                         ) {
                             Text(
                                 text = "#$kw",
-                                fontSize = 11.5.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF7E22CE),
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.5.dp)
                             )
                         }
                     }

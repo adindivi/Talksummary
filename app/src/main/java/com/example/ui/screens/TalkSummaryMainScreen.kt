@@ -2296,6 +2296,7 @@ fun MonthSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
@@ -2315,8 +2316,11 @@ fun MonthSummaryCard(
                     Text(
                         text = monthData.displayTitle,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = Color(0xFF0F172A)
+                        fontSize = 14.5.sp,
+                        color = Color(0xFF0F172A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        softWrap = false
                     )
                 }
 
@@ -2352,10 +2356,12 @@ fun MonthSummaryCard(
                             .padding(horizontal = 7.dp, vertical = 2.5.dp)
                     ) {
                         Text(
-                            text = "💬 ${monthData.daysCount}일간 (${monthData.totalMessages}건)",
+                            text = "💬 ${monthData.daysCount}일 (${monthData.totalMessages}건)",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF475569)
+                            color = Color(0xFF475569),
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
