@@ -1,9 +1,7 @@
 package com.example.data
 
 import com.example.data.parser.ChatAnalyticsEngine
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 
 class ChatAnalyticsEngineTest {
@@ -111,5 +109,99 @@ class ChatAnalyticsEngineTest {
         assertEquals(0, report.daysCount)
         assertTrue(report.participantShares.isEmpty())
         assertTrue(report.timeSlotStats.personaTitle.isNotBlank())
+    }
+
+    @Test
+    fun testAnalyzeMonth_SingleDayMonth_calculates100PercentPeakDay() {
+        // Given: A month with only 1 day of conversations
+        val singleDay = ChatDay(
+            date = "2026-07-07",
+            messages = listOf(
+                Message("김철수", "10:00", "반갑습니다."),
+                Message("이영희", "10:05", "네 안녕하세요!")
+            ),
+            summary = "칠석 인사",
+            keywords = listOf("칠석", "인사"),
+            participants = listOf("김철수", "이영희"),
+            msgCount = 2
+        )
+
+        // When: Analyzing the month
+        val report = ChatAnalyticsEngine.analyzeMonth(listOf(singleDay), "2026-07")
+
+        // Then: Total messages is 2, peak day is 100% of the month
+        assertEquals(2, report.totalMessages)
+        assertEquals(1, report.daysCount)
+        assertEquals(2, report.avgDailyMessages)
+        assertNotNull(report.peakDay)
+        assertEquals("2026-07-07", report.peakDay?.date)
+        assertEquals(100, report.peakDay?.percentageOfTotal)
+        assertEquals(2, report.peakDay?.messageCount)
+    }
+
+    @Test
+    fun testAnalyzeMonth_TieBreakerParticipants_deterministicRanking() {
+        // Given: Participants with exact same message count
+        val day = ChatDay(
+            date = "2026-08-01",
+            messages = listOf(
+                Message("김철수", "10:00", "메시지 1"),
+                Message("이영희", "10:01", "메시지 2"),
+                Message("박민수", "10:02", "메시지 3")
+            ),
+            summary = "동률 테스트",
+            keywords = emptyList(),
+            participants = listOf("김철수", "이영희", "박민수"),
+            msgCount = 3
+        )
+
+        // When: Analyzing the month
+        val report = ChatAnalyticsEngine.analyzeMonth(listOf(day), "2026-08")
+
+        // Then: Exactly 3 participants, ranks are 1, 2, 3 without crash or collision
+        assertEquals(3, report.participantShares.size)
+        assertEquals(1, report.participantShares[0].rank)
+        assertEquals(2, report.participantShares[1].rank)
+        assertEquals(3, report.participantShares[2].rank)
+        assertEquals(33, report.participantShares[0].percentage)
+    }
+
+    @Test
+    fun testParseHour_EdgeCasesAndFallbacks() {
+        // Fallback for invalid or malformed strings should return null safely without throwing
+        assertNull(ChatAnalyticsEngine.parseHour(""))
+        assertNull(ChatAnalyticsEngine.parseHour("   "))
+        assertNull(ChatAnalyticsEngine.parseHour("알 수 없음"))
+        assertNull(ChatAnalyticsEngine.parseHour("invalid:time:format"))
+
+        // Single digit hours
+        assertEquals(7, ChatAnalyticsEngine.parseHour("7:30"))
+        assertEquals(7, ChatAnalyticsEngine.parseHour("오전 7:30"))
+        assertEquals(19, ChatAnalyticsEngine.parseHour("오후 7:30"))
+    }
+
+    @Test
+    fun testAnalyzeMonth_NightOwlPersonaTrigger() {
+        // Given: Messages predominantly at midnight/early morning (00:00 ~ 06:00)
+        val nightMessages = listOf(
+            Message("야행성", "오전 1:15", "아직 안 주무시나요?"),
+            Message("야행성", "오전 2:30", "코딩 중입니다."),
+            Message("야행성", "오전 3:45", "커밋 완료!")
+        )
+        val nightDay = ChatDay(
+            date = "2026-09-01",
+            messages = nightMessages,
+            summary = "새벽 코딩",
+            keywords = listOf("코딩", "커밋"),
+            participants = listOf("야행성"),
+            msgCount = 3
+        )
+
+        // When: Analyzing the month
+        val report = ChatAnalyticsEngine.analyzeMonth(listOf(nightDay), "2026-09")
+
+        // Then: Night slot is 100%, persona reflects night owl
+        assertEquals(100, report.timeSlotStats.nightPercent)
+        assertTrue("Persona should be night owl", report.timeSlotStats.personaTitle.contains("올빼미") || report.timeSlotStats.personaTitle.contains("새벽"))
     }
 }
