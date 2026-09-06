@@ -729,7 +729,7 @@ object ChatAnalyticsEngine {
         val diff = count - avgDailyMessages
         val pct = ((diff.toFloat() / avgDailyMessages) * 100f).roundToInt()
         val label = when {
-            isPeak -> "+${pct}% 최고 피크 🔥"
+            isPeak -> "+${pct}% 피크 🔥"
             pct >= 50 -> "+${pct}% 급등 🔥"
             pct >= 10 -> "+${pct}% 활발 📈"
             pct >= -20 -> "평균 수준 📊"

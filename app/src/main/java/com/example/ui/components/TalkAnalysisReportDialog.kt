@@ -484,6 +484,7 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(
+                                    modifier = Modifier.weight(1f, fill = false),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
@@ -497,7 +498,11 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                                         text = selected.name,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = selColors.second
+                                        color = selColors.second,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
                                     )
                                     Surface(
                                         color = selColors.second.copy(alpha = 0.15f),
@@ -508,10 +513,14 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                                             fontSize = 9.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = selColors.second,
+                                            maxLines = 1,
+                                            softWrap = false,
                                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                         )
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.width(6.dp))
 
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -521,7 +530,9 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                                         text = "${selected.count}건 (${selected.percentage}%)",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = selColors.second
+                                        color = selColors.second,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                     Text(
                                         text = "✕",
@@ -817,34 +828,42 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f, fill = false),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("📈", fontSize = 15.sp)
+                    Text("📈", fontSize = 14.sp)
                     Text(
-                        "월간 대화량 파동 & 24h 체결량",
+                        "월간 대화량 파동",
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0369A1)
+                        color = Color(0xFF0369A1),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Surface(
                     color = Color(0xFFE0F2FE),
                     shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
-                        text = "실시간 스크러빙",
+                        text = "실시간 터치",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF0284C7),
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
                     )
                 }
             }
 
             Text(
-                text = "손가락으로 곡선을 쓸어 넘기며 일자별 대화 흐름을 확인해보세요",
+                text = "곡선을 좌우로 밀어 일자별 대화 흐름을 확인해보세요",
                 fontSize = 11.sp,
                 color = Color(0xFF0284C7).copy(alpha = 0.85f),
                 modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
@@ -863,45 +882,55 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = currentPoint.displayDate,
-                            fontSize = 14.5.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF0C4A6E)
-                        )
-
+                        // Date + Message Count grouped on left
                         Row(
+                            modifier = Modifier.weight(1f, fill = false),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "${currentPoint.messageCount}건",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFF0284C7)
+                                text = currentPoint.displayDate,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF0C4A6E),
+                                maxLines = 1,
+                                softWrap = false
                             )
 
-                            // Trend badge
-                            val (badgeBg, badgeText) = when {
-                                currentPoint.isPeakDay -> Pair(Color(0xFFFFEDD5), Color(0xFFC2410C))
-                                currentPoint.percentVsAvg >= 50 -> Pair(Color(0xFFFFEDD5), Color(0xFFC2410C))
-                                currentPoint.percentVsAvg >= 10 -> Pair(Color(0xFFDCFCE7), Color(0xFF15803D))
-                                currentPoint.messageCount > 0 -> Pair(Color(0xFFF1F5F9), Color(0xFF475569))
-                                else -> Pair(Color(0xFFF8FAFC), Color(0xFF94A3B8))
-                            }
+                            Text(
+                                text = "${currentPoint.messageCount}건",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF0284C7),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
 
-                            Surface(
-                                color = badgeBg,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = currentPoint.trendLabel,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = badgeText,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Compact Trend badge on right
+                        val (badgeBg, badgeText) = when {
+                            currentPoint.isPeakDay -> Pair(Color(0xFFFFEDD5), Color(0xFFC2410C))
+                            currentPoint.percentVsAvg >= 50 -> Pair(Color(0xFFFFEDD5), Color(0xFFC2410C))
+                            currentPoint.percentVsAvg >= 10 -> Pair(Color(0xFFDCFCE7), Color(0xFF15803D))
+                            currentPoint.messageCount > 0 -> Pair(Color(0xFFF1F5F9), Color(0xFF475569))
+                            else -> Pair(Color(0xFFF8FAFC), Color(0xFF94A3B8))
+                        }
+
+                        Surface(
+                            color = badgeBg,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = currentPoint.trendLabel,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = badgeText,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
+                            )
                         }
                     }
 
@@ -909,6 +938,7 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                     if (currentPoint.keywords.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -916,7 +946,9 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                                 text = "주요 키워드:",
                                 fontSize = 10.5.sp,
                                 color = Color(0xFF64748B),
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false
                             )
                             currentPoint.keywords.take(3).forEach { kw ->
                                 Surface(
@@ -928,6 +960,8 @@ private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Color(0xFF0284C7),
+                                        maxLines = 1,
+                                        softWrap = false,
                                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                     )
                                 }
@@ -1508,7 +1542,7 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "이 방의 대화에 먼저 불을 지피는 사람은 누구일까?",
+                text = "대화에 가장 먼저 불을 지피는 사람은 누구일까요?",
                 fontSize = 12.sp,
                 color = Color(0xFF15803D)
             )
@@ -1528,16 +1562,48 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🥇 선톡 장인: ", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
-                            Text(leader.name, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF15803D))
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text("🥇", fontSize = 13.sp)
+                            Text(
+                                "선톡 장인:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF166534),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            Text(
+                                text = leader.name,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF15803D),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
                         }
-                        Text(
-                            text = "${leader.pingCount}회 (${leader.pingPercentage}%)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF166534)
-                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            color = Color(0xFFBBF7D0),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "${leader.pingCount}회 (${leader.pingPercentage}%)",
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF14532D),
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -1561,8 +1627,25 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("$medal ${p.name}", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${p.pingPercentage}%", fontSize = 11.sp, color = Color(0xFF15803D))
+                                Text(
+                                    text = "$medal ${p.name}",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF166534),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${p.pingPercentage}%",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF15803D),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
                     }
@@ -1586,7 +1669,15 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("⚡ 광속 칼답러", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(fast.name, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF92400E), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    fast.name,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF92400E),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                                 Text("평균 ${fast.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFFB45309))
                             }
                         }
@@ -1602,7 +1693,15 @@ private fun FirstPingSection(firstPing: FirstPingAnalysis) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 Text("🐢 느긋한 관전자", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(slow.name, fontSize = 12.5.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1E293B), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    slow.name,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF1E293B),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                                 Text("평균 ${slow.displaySpeed}", fontSize = 10.5.sp, color = Color(0xFF64748B))
                             }
                         }
@@ -1689,27 +1788,39 @@ private fun LinguisticQuirksSection(quirks: LinguisticQuirksReport) {
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E293B),
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
                                 )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Surface(
-                                    color = Color(0xFFFEF3C7),
-                                    shape = RoundedCornerShape(999.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = u.mainQuirkBadge,
-                                        fontSize = 10.5.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF92400E),
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                                    )
+                                    Surface(
+                                        color = Color(0xFFFEF3C7),
+                                        shape = RoundedCornerShape(999.dp)
+                                    ) {
+                                        Text(
+                                            text = u.mainQuirkBadge,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF92400E),
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                        )
+                                    }
+                                    if (u.topExpression.isNotEmpty()) {
+                                        Text(
+                                            text = u.topExpression,
+                                            fontSize = 10.5.sp,
+                                            color = Color(0xFF64748B),
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
                                 }
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = u.topExpression,
-                                    fontSize = 10.5.sp,
-                                    color = Color(0xFF64748B)
-                                )
                             }
                         }
                     }
