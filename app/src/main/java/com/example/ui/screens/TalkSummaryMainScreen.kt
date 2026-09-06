@@ -427,7 +427,7 @@ fun TalkSummaryMainScreen(
                             dbState = dbState,
                             parserState = parserState,
                             aiState = aiState,
-                            modifier = Modifier.fillMaxSize().padding(12.dp),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
                             onImportFileClick = { filePickerLauncher.launch("text/plain") },
                             onPasteTextClick = { viewModel.setShowPasteModal(true) },
                             onOpenPrivacyModal = { showPrivacyModal = true }
@@ -786,7 +786,7 @@ fun TimelineColumn(
 
     Column(
         modifier = modifier.fillMaxHeight(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Only show usage tip if database is empty - Reclaims massive space on mobile once files are uploaded!
         if (allChatDays.isEmpty()) {
@@ -1137,7 +1137,7 @@ fun TimelineColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(chatDays, key = { it.date }) { chatDay ->
                     TimelineItemCard(
@@ -1155,7 +1155,7 @@ fun TimelineColumn(
     }
 }
 
-// TIMELINE CARD INDIVIDUAL COMPONENT
+// TIMELINE CARD INDIVIDUAL COMPONENT (Streamlined Flat Layout: No Inner Box, Zero Redundant Badges, Slim Margins)
 @Composable
 fun TimelineItemCard(
     chatDay: ChatDay,
@@ -1166,47 +1166,33 @@ fun TimelineItemCard(
     val isAISummarized = chatDay.summary.startsWith("[AI 정밀 요약]")
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isAISummarized) Color(0xFFFAF8FF) else Color.White
+        ),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, if (isAISummarized) Color(0xFFE9D5FF) else Color(0xFFE2E8F0)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onSelect)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp)) {
+            // Header Row: Date + Message Count (Redundant [대화 요약] badge completely removed!)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = chatDay.date,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = Color(0xFF0F172A)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "대화 요약",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF64748B)
-                        )
-                    }
-                }
+                Text(
+                    text = chatDay.date,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color(0xFF0F172A)
+                )
                 Box(
                     modifier = Modifier
                         .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
                         .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
                 ) {
                     Text(
                         text = "💬 ${chatDay.msgCount}건",
@@ -1217,92 +1203,91 @@ fun TimelineItemCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = if (isAISummarized) Color(0xFFF5F3FF) else Color(0xFFF8FAFC),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (isAISummarized) Color(0xFFDDD6FE) else Color(0xFFE2E8F0),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    .padding(12.dp)
-            ) {
-                Column {
+            // AI 3줄 요약 Title Bar & Copy Button (Flat without nested box / '대화 둘러보기' removed)
+            if (isAISummarized) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (isAISummarized) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.AutoAwesome,
-                                    contentDescription = "AI 요약본",
-                                    tint = Color(0xFF7C3AED),
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Text(
-                                    text = "✨ 오늘의 3줄 요약",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF7C3AED)
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = "대화 둘러보기",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Gray
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
-                                onCopySummary(cleanText)
-                            },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "요약 복사",
-                                tint = if (isAISummarized) Color(0xFF7C3AED) else Color.Gray,
-                                modifier = Modifier.size(13.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = "AI 요약본",
+                            tint = Color(0xFF7C3AED),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = "AI 핵심 3줄 요약",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF7C3AED)
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = chatDay.summary.replace("[AI 정밀 요약]\n", ""),
-                        fontSize = 12.sp,
-                        color = if (isAISummarized) Color(0xFF1E1B4B) else Color(0xFF1E293B),
-                        lineHeight = 19.sp,
-                        letterSpacing = (-0.2).sp,
-                        fontWeight = if (isAISummarized) FontWeight.Medium else FontWeight.Normal
-                    )
+                    IconButton(
+                        onClick = {
+                            val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
+                            onCopySummary(cleanText)
+                        },
+                        modifier = Modifier.size(22.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "요약 복사",
+                            tint = Color(0xFF7C3AED),
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(3.dp))
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            val cleanText = chatDay.summary.replace("[AI 정밀 요약]\n", "")
+                            onCopySummary(cleanText)
+                        },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "요약 복사",
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            // Summary Content: Wide, breathable layout without nested box constraints
+            Text(
+                text = chatDay.summary.replace("[AI 정밀 요약]\n", ""),
+                fontSize = 12.sp,
+                color = if (isAISummarized) Color(0xFF1E1B4B) else Color(0xFF334155),
+                lineHeight = 18.5.sp,
+                letterSpacing = (-0.2).sp,
+                fontWeight = if (isAISummarized) FontWeight.Medium else FontWeight.Normal
+            )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Bottom Actions: Keywords + Compact Apple-Style Pill Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Scrollable horizontal Row of Keywords tags: GUARANTEES no squishing or overlap on narrow devices!
+                // Scrollable horizontal Row of Keywords tags
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier
@@ -1315,7 +1300,7 @@ fun TimelineItemCard(
                             modifier = Modifier
                                 .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
                                 .border(0.6.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                                .padding(horizontal = 7.dp, vertical = 2.5.dp)
                         ) {
                             Text(
                                 text = "#$keyword",
@@ -1333,10 +1318,10 @@ fun TimelineItemCard(
                         containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
                         contentColor = if (isAISummarized) BrandSlate else Color.White
                     ),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(999.dp),
                     border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
-                    modifier = Modifier.height(30.dp)
+                    modifier = Modifier.height(28.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
