@@ -67,9 +67,41 @@ import com.example.ui.components.TalkStoryCarouselDialog
 import com.example.ui.components.TalkAnalysisReportDialog
 import com.example.data.parser.ChatAnalyticsEngine
 import com.example.ui.util.AvatarColorUtils
+import android.content.Context
 import android.content.Intent
 import java.io.File
 import java.util.*
+
+/**
+ * KakaoTalk direct share helper with graceful fallback to system chooser.
+ */
+private fun shareDirectlyToKakaoTalk(context: Context, text: String, fallbackChooserTitle: String) {
+    val kakaoIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+        setPackage("com.kakao.talk")
+        if (context !is android.app.Activity) {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+    try {
+        context.startActivity(kakaoIntent)
+    } catch (_: Exception) {
+        val fallbackIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        val chooser = Intent.createChooser(fallbackIntent, fallbackChooserTitle).apply {
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        context.startActivity(chooser)
+    }
+}
 
 private data class DayCellData(
     val dayNumber: Int,
@@ -1040,11 +1072,7 @@ fun TalkSummaryMainScreen(
                         "2장: ${story.card2.title}\n${story.card2.story}\n\n" +
                         "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
                         "#카카오톡대화요약 #스토리카드"
-                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                    }
-                    context.startActivity(Intent.createChooser(sendIntent, "3장 스토리 카톡 공유"))
+                    shareDirectlyToKakaoTalk(context, shareText, "3장 스토리 카톡 공유")
                 }
             )
         }
@@ -1098,11 +1126,7 @@ fun TalkSummaryMainScreen(
                         "💫 우리들의 케미:\n${report.chemistryTitle}\n${report.chemistryDescription}\n\n" +
                         "#카카오톡대화분석 #토크서머리"
 
-                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                    }
-                    context.startActivity(Intent.createChooser(sendIntent, "카톡 대화 분석 리포트 공유"))
+                    shareDirectlyToKakaoTalk(context, shareText, "카톡 대화 분석 리포트 공유")
                 }
             )
         }
