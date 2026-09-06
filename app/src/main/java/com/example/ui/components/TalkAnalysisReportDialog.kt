@@ -1,10 +1,16 @@
 package com.example.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -18,11 +24,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -34,6 +46,8 @@ import com.example.model.ParticipantShare
 import com.example.model.PeakDayData
 import com.example.model.TimeSlotDistribution
 import com.example.ui.util.AvatarColorUtils
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private val KakaoBtnYellow = Color(0xFFFEE500)
 private val KakaoBtnDark = Color(0xFF191919)
@@ -57,22 +71,102 @@ fun TalkAnalysisReportDialog(
         ChatAnalyticsEngine.analyzeMonth(chatDays, selectedYearMonth)
     }
 
+    val scope = rememberCoroutineScope()
+    val offsetY = remember { Animatable(0f) }
+    val scrollState = rememberScrollState()
+    var isClosing by remember { mutableStateOf(false) }
+
+    fun dismissWithAnimation() {
+        if (isClosing) return
+        isClosing = true
+        scope.launch {
+            offsetY.animateTo(1200f, tween(200, easing = FastOutLinearInEasing))
+            onDismiss()
+        }
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // If user has already dragged the modal downwards and is now dragging up
+                if (offsetY.value > 0f && available.y < 0) {
+                    val consumed = minOf(-available.y, offsetY.value)
+                    scope.launch { offsetY.snapTo(offsetY.value - consumed) }
+                    return Offset(0f, -consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                // When content is scrolled to the very top and user drags downwards
+                if (available.y > 0 && scrollState.value == 0) {
+                    scope.launch { offsetY.snapTo(offsetY.value + available.y * 0.7f) }
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (offsetY.value > 120f || available.y > 800f) {
+                    dismissWithAnimation()
+                    return available
+                } else if (offsetY.value > 0f) {
+                    offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+
+    val dragModifier = Modifier.draggable(
+        orientation = Orientation.Vertical,
+        state = rememberDraggableState { delta ->
+            if (!isClosing && (delta > 0 || offsetY.value > 0)) {
+                scope.launch {
+                    offsetY.snapTo(maxOf(0f, offsetY.value + delta))
+                }
+            }
+        },
+        onDragStopped = { velocity ->
+            if (offsetY.value > 120f || velocity > 800f) {
+                dismissWithAnimation()
+            } else {
+                scope.launch {
+                    offsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                }
+            }
+        }
+    )
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { dismissWithAnimation() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val scrimAlpha = (0.55f * (1f - (offsetY.value / 600f))).coerceIn(0f, 0.55f)
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.55f))
-                .padding(horizontal = 16.dp, vertical = 24.dp),
+                .background(Color.Black.copy(alpha = scrimAlpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { dismissWithAnimation() }
+                .padding(horizontal = 14.dp, vertical = 20.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 480.dp)
-                    .heightIn(max = 700.dp),
+                    .heightIn(max = 700.dp)
+                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                    .nestedScroll(nestedScrollConnection)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { /* Consume touches so click doesn't bubble up to scrim */ },
                 shape = RoundedCornerShape(26.dp),
                 color = Color.White,
                 shadowElevation = 12.dp
@@ -80,22 +174,41 @@ fun TalkAnalysisReportDialog(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Top Header Section
+                    // Top Drag Handle (Toss / iOS Bottom Sheet Style)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFEFF6FF))
+                            .padding(top = 10.dp, bottom = 2.dp)
+                            .then(dragModifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(38.dp)
+                                .height(4.5.dp)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(Color(0xFFCBD5E1))
+                        )
+                    }
+
+                    // Top Header Section (Draggable to dismiss)
                     ReportHeader(
                         report = report,
                         availableMonths = availableMonths,
                         selectedYearMonth = selectedYearMonth,
                         onSelectMonth = { selectedYearMonth = it },
-                        onDismiss = onDismiss
+                        onDismiss = { dismissWithAnimation() },
+                        dragModifier = dragModifier
                     )
 
                     // Scrollable Analysis Cards
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 18.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // 1. 발언 지분율 & 랭킹 카드
                         ParticipantRankSection(participantShares = report.participantShares)
@@ -173,7 +286,8 @@ private fun ReportHeader(
     availableMonths: List<String>,
     selectedYearMonth: String,
     onSelectMonth: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    dragModifier: Modifier = Modifier
 ) {
     Box(
         modifier = Modifier
@@ -183,7 +297,8 @@ private fun ReportHeader(
                     colors = listOf(Color(0xFFEFF6FF), Color(0xFFF8FAFC))
                 )
             )
-            .padding(top = 16.dp, bottom = 10.dp, start = 18.dp, end = 18.dp)
+            .then(dragModifier)
+            .padding(top = 8.dp, bottom = 10.dp, start = 18.dp, end = 18.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -280,6 +395,8 @@ private fun ReportHeader(
  */
 @Composable
 private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
+    var selectedShare by remember { mutableStateOf<ParticipantShare?>(null) }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
@@ -310,33 +427,137 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
-                // Horizontal Stack Bar
+                // Interactive Horizontal Stack Bar (Clickable segments!)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(999.dp))
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(9.dp))
                         .background(Color(0xFFE2E8F0))
                 ) {
                     Row(modifier = Modifier.fillMaxSize()) {
                         participantShares.forEach { share ->
                             val colorPair = AvatarColorUtils.getAvatarColors(share.name)
+                            val isSelected = selectedShare?.name == share.name
                             Box(
                                 modifier = Modifier
-                                    .weight(share.percentage.coerceAtLeast(2).toFloat())
+                                    .weight(share.percentage.coerceAtLeast(3).toFloat())
                                     .fillMaxHeight()
-                                    .background(colorPair.second.copy(alpha = 0.85f))
+                                    .clickable {
+                                        selectedShare = if (selectedShare?.name == share.name) null else share
+                                    }
+                                    .background(
+                                        colorPair.second.copy(
+                                            alpha = if (selectedShare == null || isSelected) 0.92f else 0.35f
+                                        )
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 0.5.dp,
+                                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.4f)
+                                    )
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                // Interactive Speaker Tooltip / Info Capsule
+                Spacer(modifier = Modifier.height(8.dp))
+                AnimatedContent(
+                    targetState = selectedShare,
+                    transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(140)) },
+                    label = "speakerTooltip"
+                ) { selected ->
+                    if (selected != null) {
+                        val selColors = AvatarColorUtils.getAvatarColors(selected.name)
+                        Surface(
+                            color = selColors.first,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, selColors.second.copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedShare = null }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(selColors.second)
+                                    )
+                                    Text(
+                                        text = selected.name,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = selColors.second
+                                    )
+                                    Surface(
+                                        color = selColors.second.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = selected.badge,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = selColors.second,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
 
-                // Top Talkers List — bulletproof single-line SpaceBetween layout
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "${selected.count}건 (${selected.percentage}%)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = selColors.second
+                                    )
+                                    Text(
+                                        text = "✕",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = selColors.second.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(start = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "👆 색상 막대를 터치하면 발화자 이름을 확인할 수 있어요",
+                                fontSize = 11.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Top Talkers List — Clickable to highlight matching segment
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     participantShares.take(5).forEach { share ->
                         val colorPair = AvatarColorUtils.getAvatarColors(share.name)
+                        val isSelected = selectedShare?.name == share.name
                         val rankIcon = when (share.rank) {
                             1 -> "🥇"
                             2 -> "🥈"
@@ -353,8 +574,18 @@ private fun ParticipantRankSection(participantShares: List<ParticipantShare>) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color.White, RoundedCornerShape(12.dp))
-                                .border(0.8.dp, Color(0xFFF1F5F9), RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) colorPair.first.copy(alpha = 0.6f) else Color.White,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    width = if (isSelected) 1.2.dp else 0.8.dp,
+                                    color = if (isSelected) colorPair.second.copy(alpha = 0.6f) else Color(0xFFF1F5F9),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    selectedShare = if (selectedShare?.name == share.name) null else share
+                                }
                                 .padding(horizontal = 10.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
