@@ -117,7 +117,7 @@ class TalkSummaryRepository(private val db: AppDatabase) {
             .take(4)
             .map { it.key }
 
-        val summaryText = "👥 핵심 참여자: ${topParticipants.joinToString(", ")} | 하루 총 ${messages.size}회 상호작용 진행됨."
+        val summaryText = "👥 ${topParticipants.joinToString(", ")}님이 총 ${messages.size}개의 이야기를 나눴어요."
         return LocalHeuristic(summaryText, topKeywords, topParticipants)
     }
 

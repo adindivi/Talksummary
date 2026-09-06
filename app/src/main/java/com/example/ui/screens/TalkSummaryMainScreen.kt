@@ -241,7 +241,7 @@ fun TalkSummaryMainScreen(
                                             .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
                                     ) {
                                         Text(
-                                            text = "온디바이스 AI",
+                                            text = "내 폰 안의 AI",
                                             fontSize = 8.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF2563EB),
@@ -252,7 +252,7 @@ fun TalkSummaryMainScreen(
                                 }
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "카카오톡 대화 분석 및 3줄 요약",
+                                    text = "복잡한 대화도 딱 3줄로 깔끔하게",
                                     fontSize = 9.5.sp,
                                     color = Color(0xFF64748B),
                                     fontWeight = FontWeight.Medium,
@@ -272,7 +272,7 @@ fun TalkSummaryMainScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.AutoAwesome,
-                                    contentDescription = "전체 AI 일괄 요약",
+                                    contentDescription = "전체 날짜 일괄 요약",
                                     tint = Color(0xFFD97706),
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -288,7 +288,7 @@ fun TalkSummaryMainScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Shield,
-                                contentDescription = "Settings",
+                                contentDescription = "AI 비서 및 환경 설정",
                                 tint = Color(0xFF4F46E5),
                                 modifier = Modifier.size(18.dp)
                             )
@@ -304,7 +304,7 @@ fun TalkSummaryMainScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = "Clear DB",
+                                contentDescription = "대화 기록 지우기",
                                 tint = Color(0xFFEF4444),
                                 modifier = Modifier.size(18.dp)
                             )
@@ -315,8 +315,8 @@ fun TalkSummaryMainScreen(
                             AlertDialog(
                                 onDismissRequest = { showClearConfirm = false },
                                 icon = { Icon(Icons.Default.Warning, contentDescription = "Warn", tint = Color.Red) },
-                                title = { Text("업로드 대화록 비우기", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
-                                text = { Text("기기 내부에 임시 보관 중인 모든 대화 기록 및 요약 데이터가 삭제됩니다. (API Key 및 연동 설정은 안전하게 유지됩니다.)", fontSize = 13.sp) },
+                                title = { Text("대화 기록을 모두 지울까요?", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                text = { Text("기기에 보관된 모든 대화 내용과 요약 데이터가 삭제됩니다. (API 키 및 연동 설정은 안전하게 유지돼요.)", fontSize = 13.sp) },
                                 confirmButton = {
                                     Button(
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
@@ -324,7 +324,7 @@ fun TalkSummaryMainScreen(
                                             showClearConfirm = false
                                             viewModel.clearAllData()
                                         }
-                                    ) { Text("삭제") }
+                                    ) { Text("기록 지우기") }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showClearConfirm = false }) { Text("취소") }
@@ -424,7 +424,7 @@ fun TalkSummaryMainScreen(
                                         }
                                         Spacer(modifier = Modifier.height(14.dp))
                                         Text(
-                                            text = "대화방을 보여드릴 준비 완료!",
+                                            text = "대화를 선택해 주세요",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
                                             color = BrandSlate,
@@ -432,7 +432,7 @@ fun TalkSummaryMainScreen(
                                         )
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "왼쪽 목록에서 보고 싶은 날짜의 대화 타임라인 요약 카드를 터치해 보세요.",
+                                            text = "왼쪽 목록에서 날짜를 선택하면 그날 나눈 카카오톡 대화를 자세히 볼 수 있어요.",
                                             fontSize = 11.sp,
                                             color = Color.Gray,
                                             textAlign = TextAlign.Center,
@@ -540,10 +540,10 @@ fun TalkSummaryMainScreen(
                         tint = BrandSlate
                     )
                 },
-                title = { Text("백그라운드 AI 요약 알림 안내", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                title = { Text("백그라운드 요약 알림 안내", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
                 text = {
                     Text(
-                        "대용량 대화 요약 또는 온디바이스(GGUF) 모델 추론 시 백그라운드 서비스에서 진행 상태와 실시간 속도(TPS)를 알림으로 제공합니다.\n\n알림 권한을 허용하시면 앱이 백그라운드에 있어도 요약 완료 여부를 즉시 확인하실 수 있습니다.",
+                        "대용량 대화 요약 시 앱을 닫거나 다른 앱을 사용 중이어도 요약 진행 상황과 완료 여부를 상단 알림창으로 알려드려요.\n\n알림 권한을 켜두시면 요약이 끝났을 때 바로 확인하실 수 있어요.",
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         color = Color(0xFF475569)
@@ -558,7 +558,7 @@ fun TalkSummaryMainScreen(
                                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
                         }
-                    ) { Text("권한 허용하기") }
+                    ) { Text("알림 켜기") }
                 },
                 dismissButton = {
                     TextButton(onClick = { showPermissionRationale = false }) { Text("나중에", color = Color.Gray) }
@@ -611,9 +611,9 @@ fun TalkSummaryMainScreen(
                             color = Color(0xFF334155)
                         )
                         HorizontalDivider(color = Color(0xFFF1F5F9))
-                        Text("💡 조치 안내:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = BrandSlate)
-                        Text("• API 키가 등록되어 있는지 또는 무료 할당량이 만료되지 않았는지 [설정] 메뉴에서 확인해 보세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
-                        Text("• 카카오톡 내보내기 대화 파일(.txt)이 올바른 형식인지 확인해 보세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
+                        Text("💡 해결 방법:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = BrandSlate)
+                        Text("• API 키가 바르게 등록되어 있는지 [설정] 메뉴에서 확인해 주세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
+                        Text("• 카카오톡 내보내기 대화 파일(.txt)이 맞는지 확인해 주세요.", fontSize = 11.sp, color = Color(0xFF64748B), lineHeight = 16.sp)
                     }
                 },
                 confirmButton = {
@@ -624,7 +624,7 @@ fun TalkSummaryMainScreen(
                             viewModel.setShowErrorDetails(false)
                             viewModel.setShowSettings(true)
                         }
-                    ) { Text("설정 및 진단 열기", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text("설정 열기", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.setShowErrorDetails(false) }) { Text("닫기", color = Color.Gray, fontSize = 12.sp) }
@@ -736,14 +736,14 @@ fun TalkSummaryMainScreen(
                             verticalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             Text(
-                                text = task.title.ifEmpty { "작업 진행 중" },
+                                text = task.title.ifEmpty { "잠시만 기다려주세요" },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 color = BrandSlate,
                                 textAlign = TextAlign.Center
                             )
                             Text(
-                                text = task.detail.ifEmpty { "잠시만 기다려주세요..." },
+                                text = task.detail.ifEmpty { "차근차근 정리하고 있어요..." },
                                 fontSize = 12.5.sp,
                                 lineHeight = 17.sp,
                                 color = Color(0xFF64748B),
@@ -813,7 +813,7 @@ fun TalkSummaryMainScreen(
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = "백그라운드에서도 안전하게 유지됩니다",
+                                    text = "잠시 다른 앱을 보고 오셔도 작업이 계속돼요",
                                     fontSize = 10.5.sp,
                                     color = Color(0xFF64748B)
                                 )
@@ -837,7 +837,7 @@ fun TalkSummaryMainScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "작업 중단",
+                                    text = "요약 멈추기",
                                     fontSize = 12.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFFEF4444)
@@ -915,10 +915,10 @@ fun TimelineColumn(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     listOf(
-                        "보관소" to (dbState == "안전보관"),
-                        "네트워크" to isOnline,
-                        "파서" to (parserState == "정상작동"),
-                        "AI엔진" to (aiState != "오프라인")
+                        "대화 저장소" to (dbState == "안전보관"),
+                        "인터넷" to isOnline,
+                        "대화 분석기" to (parserState == "정상작동"),
+                        "AI 비서" to (aiState != "오프라인")
                     ).forEach { (label, ok) ->
                         Box(
                             modifier = Modifier
@@ -1045,7 +1045,7 @@ fun TimelineColumn(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "카톡 .txt 열기",
+                        "카톡 대화 파일 열기",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = KakaoTextDark,
@@ -1076,7 +1076,7 @@ fun TimelineColumn(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "대화 붙여넣기",
+                        "대화 내용 붙여넣기",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = BrandSlate,
@@ -1112,12 +1112,12 @@ fun TimelineColumn(
                                     tint = Color.Gray,
                                     modifier = Modifier.size(14.dp)
                                 )
-                                Text("날짜 범위 필터링", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                                Text("원하는 기간만 모아보기", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
                             }
                             // Calculate global participants of all loaded logs
                             val totalMessages = allChatDays.sumOf { it.msgCount }
                             Text(
-                                text = "${allChatDays.size}일간 대화 • 총 ${totalMessages}개 메시지 분석됨",
+                                text = "${allChatDays.size}일 동안 나눈 ${totalMessages}개의 대화가 있어요",
                                 fontSize = 9.5.sp,
                                 color = Color(0xFF64748B),
                                 fontWeight = FontWeight.Medium
@@ -1138,13 +1138,13 @@ fun TimelineColumn(
                                 .weight(1f)
                                 .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
                                 .border(0.8.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
-                                .clickable {
-                                    showDatePickerDialog(context, startText) { selected ->
-                                        startText = selected
-                                        viewModel.setDateFilters(selected, endText)
-                                    }
+                            .clickable {
+                                showDatePickerDialog(context, startText) { selected ->
+                                    startText = selected
+                                    viewModel.setDateFilters(selected, endText)
                                 }
-                                .padding(horizontal = 10.dp, vertical = 7.dp)
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1154,7 +1154,7 @@ fun TimelineColumn(
                                 Column {
                                     Text("시작일", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
                                     Text(
-                                        text = startText.ifEmpty { "전체 시작일" },
+                                        text = startText.ifEmpty { "처음부터" },
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (startText.isNotEmpty()) Color.Black else Color.Gray
@@ -1175,13 +1175,13 @@ fun TimelineColumn(
                                 .weight(1f)
                                 .background(Color(0xFFF8FAFC), RoundedCornerShape(8.dp))
                                 .border(0.8.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
-                                .clickable {
-                                    showDatePickerDialog(context, endText) { selected ->
-                                        endText = selected
-                                        viewModel.setDateFilters(startText, selected)
-                                    }
+                            .clickable {
+                                showDatePickerDialog(context, endText) { selected ->
+                                    endText = selected
+                                    viewModel.setDateFilters(startText, selected)
                                 }
-                                .padding(horizontal = 10.dp, vertical = 7.dp)
+                            }
+                            .padding(horizontal = 10.dp, vertical = 7.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1191,7 +1191,7 @@ fun TimelineColumn(
                                 Column {
                                     Text("종료일", fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
                                     Text(
-                                        text = endText.ifEmpty { "전체 종료일" },
+                                        text = endText.ifEmpty { "오늘까지" },
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (endText.isNotEmpty()) Color.Black else Color.Gray
@@ -1248,7 +1248,7 @@ fun TimelineColumn(
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "날짜별 대화 요약본 타임라인",
+                    text = "날짜별 대화 요약",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = BrandSlate
@@ -1261,7 +1261,7 @@ fun TimelineColumn(
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
-                    text = "총 ${chatDays.size}개 일자",
+                    text = "총 ${chatDays.size}일",
                     fontSize = 10.sp,
                     color = BrandSlate,
                     fontWeight = FontWeight.SemiBold
@@ -1294,14 +1294,14 @@ fun TimelineColumn(
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        "불러온 대화 내용이 없습니다.",
+                        "아직 불러온 대화가 없어요",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = BrandSlate
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        "상단의 [카톡 .txt 열기] 또는 [대화 붙여넣기] 버튼을 통해 대화를 불러와 보세요.",
+                        "위의 [카톡 대화 파일 열기] 또는 [대화 내용 붙여넣기]를 눌러 대화를 시작해 보세요.",
                         fontSize = 12.sp,
                         color = Color(0xFF64748B),
                         textAlign = TextAlign.Center,
@@ -1428,7 +1428,7 @@ fun TimelineItemCard(
                                     modifier = Modifier.size(13.dp)
                                 )
                                 Text(
-                                    text = "AI 핵심 3줄 요약",
+                                    text = "✨ 오늘의 3줄 요약",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF7C3AED)
@@ -1436,7 +1436,7 @@ fun TimelineItemCard(
                             }
                         } else {
                             Text(
-                                text = "기본 대화 통계 요약",
+                                text = "대화 둘러보기",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Gray
@@ -1526,7 +1526,7 @@ fun TimelineItemCard(
                             modifier = Modifier.size(11.dp)
                         )
                         Text(
-                            text = if (isAISummarized) "다시 요약" else "AI 요약",
+                            text = if (isAISummarized) "다시 요약하기" else "AI 3줄 요약",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -1612,7 +1612,7 @@ fun ChatRoomScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${chatDay.date} • 대화 시뮬레이터",
+                        text = "${chatDay.date} • 카톡 대화방",
                         fontSize = 9.5.sp,
                         color = Color(0xFF475569),
                         fontWeight = FontWeight.Medium
@@ -1843,7 +1843,7 @@ fun ChatRoomScreen(
                             modifier = Modifier.size(11.dp)
                         )
                         Text(
-                            text = "100% 온디바이스 로컬 안전 처리",
+                            text = "대화 내용은 폰 안에만 안전하게 머물러요",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF475569),
@@ -1949,7 +1949,7 @@ fun SettingsDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Gemini AI 설정 및 자가점검",
+                            text = "AI 비서 및 환경 설정",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -1977,7 +1977,7 @@ fun SettingsDialog(
                     ) {
                         Column {
                             Text(
-                                text = "🔒 구글 API 키는 어떻게 관리되나요?",
+                                text = "🔒 API 키는 어떻게 보호되나요?",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 color = BrandSlate
@@ -1994,7 +1994,7 @@ fun SettingsDialog(
 
                     // AI Engine Selector
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("AI 추론 엔진 선택", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                        Text("AI 비서 선택", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2007,7 +2007,7 @@ fun SettingsDialog(
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "온라인 Gemini API",
+                                    text = "구글 제미나이 (클라우드)",
                                     color = if (!useLocalChecked && useChecked) KakaoTextDark else Color.DarkGray,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -2023,7 +2023,7 @@ fun SettingsDialog(
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "온디바이스 GGUF",
+                                    text = "내 폰 안의 AI (오프라인)",
                                     color = if (useLocalChecked) Color.White else Color.DarkGray,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
@@ -2042,7 +2042,7 @@ fun SettingsDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Gemini AI API Key", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("Google AI Studio API 키", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                 val context = LocalContext.current
                                 Text(
                                     "무료 키 발급받기 →",
@@ -2067,7 +2067,7 @@ fun SettingsDialog(
                             OutlinedTextField(
                                 value = keyText,
                                 onValueChange = { keyText = it },
-                                placeholder = { Text("AIzaSy... 형식의 API Key를 작성해 주세요", fontSize = 12.sp, color = Color.Gray) },
+                                placeholder = { Text("AIzaSy... 로 시작하는 API 키를 입력해 주세요", fontSize = 12.sp, color = Color.Gray) },
                                 singleLine = true,
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedTextColor = Color.Black,
@@ -2088,7 +2088,7 @@ fun SettingsDialog(
 
                         // Model Selector
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Gemini 작동 모델 선택", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                            Text("제미나이 AI 모델 선택", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
                             Row(
                                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -2130,7 +2130,7 @@ fun SettingsDialog(
                     } else {
                         // Local LLM Settings
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("온디바이스 GGUF 로컬 엔진 (llama.cpp JNI)", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                            Text("내 폰 안의 오프라인 AI 모델 (llama.cpp)", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -2141,13 +2141,13 @@ fun SettingsDialog(
                             ) {
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
-                                        text = if (localPathText.isEmpty()) "📂 GGUF 모델 파일(.gguf) 선택 및 탑재" else "✅ GGUF 모델 탑재 완료",
+                                        text = if (localPathText.isEmpty()) "📂 AI 모델 파일(.gguf) 선택하기" else "✅ AI 모델 준비 완료",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
                                         color = if (localPathText.isEmpty()) Color.DarkGray else BrandGreenAccent
                                     )
                                     Text(
-                                        text = if (localPathText.isEmpty()) "터치하여 Qwen, LLaMA 등 .gguf 형식 모델을 선택하세요." else localPathText.substringAfterLast(File.separatorChar),
+                                        text = if (localPathText.isEmpty()) "기기에 저장된 .gguf AI 모델 파일을 선택해 주세요." else localPathText.substringAfterLast(File.separatorChar),
                                         fontSize = 10.sp,
                                         color = Color.Gray,
                                         maxLines = 1,
@@ -2178,7 +2178,7 @@ fun SettingsDialog(
                     // Diagnostic Test Blocks
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = "🛠️ 시스템 진단 및 연결 자가복구",
+                            text = "🛠️ 시스템 점검 및 연결 진단",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             color = BrandSlate
@@ -2202,7 +2202,7 @@ fun SettingsDialog(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Test Connection", tint = Color(0xFF4F46E5), modifier = Modifier.size(14.dp))
-                                    Text("AI 연결 상태 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
+                                    Text("AI 통신 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
                                 }
                             }
 
@@ -2220,7 +2220,7 @@ fun SettingsDialog(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Icon(Icons.Default.CheckCircle, contentDescription = "System check", tint = BrandSlate, modifier = Modifier.size(14.dp))
-                                    Text("시스템 전체 복구 진단", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandSlate)
+                                    Text("시스템 전체 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandSlate)
                                 }
                             }
                         }
@@ -2264,7 +2264,7 @@ fun SettingsDialog(
                         shape = RoundedCornerShape(12.dp),
                         onClick = { onSave(keyText, useChecked, selectedModel, useLocalChecked, localPathText) }
                     ) {
-                        Text("설정 저장", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("설정 저장하기", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -2321,7 +2321,7 @@ fun PasteTextDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "카카오톡 대화 직접 붙여넣기",
+                                text = "대화 내용 직접 붙여넣기",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
@@ -2352,7 +2352,7 @@ fun PasteTextDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "복사한 대화 텍스트를 붙여넣어 주세요.",
+                                text = "복사한 대화 내용을 여기에 붙여넣어 주세요.",
                                 fontSize = 12.sp,
                                 color = Color(0xFF64748B)
                             )
@@ -2361,9 +2361,9 @@ fun PasteTextDialog(
                                     val clipText = clipboardManager.getText()?.text
                                     if (!clipText.isNullOrBlank()) {
                                         rawText = clipText
-                                        onShowToast("클립보드에서 텍스트를 가져왔습니다 (${clipText.length}자).", "success")
+                                        onShowToast("클립보드에서 대화를 가져왔어요 (${clipText.length}자).", "success")
                                     } else {
-                                        onShowToast("클립보드가 비어있거나 복사된 텍스트가 없습니다.", "info")
+                                        onShowToast("클립보드에 복사된 대화 내용이 없어요.", "info")
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
@@ -2379,7 +2379,7 @@ fun PasteTextDialog(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "클립보드 붙여넣기",
+                                    text = "클립보드 내용 붙여넣기",
                                     fontSize = 11.sp,
                                     color = BrandSlate,
                                     fontWeight = FontWeight.SemiBold
@@ -2456,7 +2456,7 @@ fun PasteTextDialog(
                             onClick = { onConfirm(rawText) }
                         ) {
                             Text(
-                                "대화 불러오기 및 요약",
+                                "대화 불러오기",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (rawText.isNotBlank()) KakaoTextDark else Color(0xFF94A3B8)
