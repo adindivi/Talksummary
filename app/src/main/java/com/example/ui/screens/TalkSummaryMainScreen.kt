@@ -3058,175 +3058,76 @@ fun SettingsDialog(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-                            .debouncedClickable { onShowPrivacyModal() }
-                            .padding(12.dp)
-                    ) {
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "🔒 소중한 대화와 키는 안전하게 보호돼요",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = BrandSlate
-                                )
-                                Text(
-                                    text = "자세히 보기 >",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF4F46E5)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "대화 내용과 API 키는 외부 서버로 유출되지 않고 오직 내 폰 안에만 안전하게 머물러요. 안심하고 사용하세요.",
-                                fontSize = 10.sp,
-                                color = Color(0xFF64748B),
-                                lineHeight = 15.sp
-                            )
-                        }
-                    }
-
-                    // Background Battery & Continuous Summarization Card
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                if (isBatteryOptimizationIgnored) Color(0xFFECFDF5) else Color(0xFFFFFBEB),
-                                RoundedCornerShape(12.dp)
-                            )
-                            .border(
-                                1.dp,
-                                if (isBatteryOptimizationIgnored) Color(0xFFA7F3D0) else Color(0xFFFDE68A),
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(12.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (isBatteryOptimizationIgnored) Icons.Filled.CheckCircle else Icons.Filled.Bolt,
-                                        contentDescription = "Battery Status",
-                                        tint = if (isBatteryOptimizationIgnored) Color(0xFF059669) else Color(0xFFD97706),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = "화면이 꺼져도 멈추지 않고 요약하기",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = BrandSlate
-                                    )
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .background(
-                                            if (isBatteryOptimizationIgnored) Color(0xFFD1FAE5) else Color(0xFFFEF3C7),
-                                            RoundedCornerShape(6.dp)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.5.dp)
-                                ) {
-                                    Text(
-                                        text = if (isBatteryOptimizationIgnored) "백그라운드 켜짐" else "절전 모드 동작 중",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isBatteryOptimizationIgnored) Color(0xFF065F46) else Color(0xFF92400E)
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = if (isBatteryOptimizationIgnored) {
-                                    "화면이 꺼지거나 다른 앱을 쓸 때도 끊김 없이 백그라운드에서 빠르게 요약을 마쳐요."
-                                } else {
-                                    "화면이 꺼지거나 다른 앱으로 이동해도 AI가 멈추지 않도록 백그라운드 실행을 허용해 주세요."
-                                },
-                                fontSize = 10.sp,
-                                color = Color(0xFF64748B),
-                                lineHeight = 15.sp
-                            )
-
-                            if (!isBatteryOptimizationIgnored) {
-                                Button(
-                                    onClick = onRequestBatteryExemption,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(36.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = BrandSlate),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text("⚡", fontSize = 11.sp)
-                                        Text(
-                                            text = "멈춤 없이 계속 요약하기",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // AI Engine Selector
+                    // 1. AI Engine Selector (Top Priority - No text truncation, clean 2-card selector)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("어떤 AI로 요약할까요?", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = BrandSlate)
+                        Text(
+                            text = "어떤 AI로 요약할까요?",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            color = BrandSlate
+                        )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Button(
-                                onClick = { useLocalChecked = false; useChecked = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = if (!useLocalChecked && useChecked) KakaoYellow else Color(0xFFF1F5F9)),
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                            val isGemini = !useLocalChecked && useChecked
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isGemini) Color(0xFFFFFBEB) else Color(0xFFF8FAFC),
+                                border = BorderStroke(
+                                    1.2.dp,
+                                    if (isGemini) KakaoYellow else Color(0xFFE2E8F0)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { useLocalChecked = false; useChecked = true }
                             ) {
-                                Text(
-                                    text = "구글 제미나이 (빠르고 정밀)",
-                                    color = if (!useLocalChecked && useChecked) KakaoTextDark else Color.DarkGray,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = "⚡ 구글 제미나이",
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isGemini) KakaoTextDark else Color(0xFF334155)
+                                    )
+                                    Text(
+                                        text = "초고속 · 높은 정확도",
+                                        fontSize = 9.5.sp,
+                                        color = if (isGemini) Color(0xFF78350F) else Color(0xFF94A3B8)
+                                    )
+                                }
                             }
-                            Button(
-                                onClick = { useLocalChecked = true; useChecked = false },
-                                colors = ButtonDefaults.buttonColors(containerColor = if (useLocalChecked) BrandGreenAccent else Color(0xFFF1F5F9)),
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+
+                            val isLocal = useLocalChecked
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isLocal) Color(0xFFECFDF5) else Color(0xFFF8FAFC),
+                                border = BorderStroke(
+                                    1.2.dp,
+                                    if (isLocal) BrandGreenAccent else Color(0xFFE2E8F0)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { useLocalChecked = true; useChecked = false }
                             ) {
-                                Text(
-                                    text = "내 폰 안의 AI (데이터 무료)",
-                                    color = if (useLocalChecked) Color.White else Color.DarkGray,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = "📱 내 폰 안의 AI",
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isLocal) Color(0xFF065F46) else Color(0xFF334155)
+                                    )
+                                    Text(
+                                        text = "완전 무료 · 데이터 불필요",
+                                        fontSize = 9.5.sp,
+                                        color = if (isLocal) Color(0xFF047857) else Color(0xFF94A3B8)
+                                    )
+                                }
                             }
                         }
                     }
@@ -3367,6 +3268,44 @@ fun SettingsDialog(
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // 3. Security & Privacy Notice Card (Placed contextually right below AI settings)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                            .debouncedClickable { onShowPrivacyModal() }
+                            .padding(11.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🔒 소중한 대화와 키는 안전하게 보호돼요",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = BrandSlate
+                                )
+                                Text(
+                                    text = "자세히 보기 >",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF4F46E5)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "대화 내용과 API 키는 외부 서버로 유출되지 않고 오직 내 폰 안에만 안전하게 머물러요. 안심하고 사용하세요.",
+                                fontSize = 9.5.sp,
+                                color = Color(0xFF64748B),
+                                lineHeight = 14.5.sp
+                            )
                         }
                     }
 
