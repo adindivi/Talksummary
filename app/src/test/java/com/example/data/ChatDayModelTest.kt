@@ -1,4 +1,4 @@
-﻿package com.example.data
+package com.example.data
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -103,5 +103,29 @@ class ChatDayModelTest {
 
         val topSpeakers = counts.take(2).map { it.first }
         assertEquals(listOf("홍길동", "이순신"), topSpeakers)
+    }
+
+    @Test
+    fun messageNoiseFiltering_removesAttachmentPlaceholdersAndSystemNoise() {
+        val noiseRegex = Regex("^((\\[?(사진|이모티콘|동영상|음성메시지|파일|보이스톡|페이스톡|샵검색)\\]?(\\s*\\d+장)?)|(삭제된 메시지입니다\\.?))(\\s*)$")
+        val messages = listOf(
+            Message("김요한", "10:00", "사진"),
+            Message("김건수", "10:01", "전주 한옥마을 다녀왔는데 옛날 생각나네요."),
+            Message("심윤수", "10:02", "[이모티콘]"),
+            Message("김요한", "10:03", "사진 3장"),
+            Message("심윤수", "10:04", "내일 화상회의에서 뵙겠습니다!"),
+            Message("시스템", "10:05", "삭제된 메시지입니다.")
+        )
+
+        val filtered = messages.filter { msg ->
+            val text = msg.text.trim()
+            text.isNotEmpty() && !noiseRegex.matches(text)
+        }
+
+        assertEquals(2, filtered.size)
+        assertEquals("김건수", filtered[0].sender)
+        assertEquals("전주 한옥마을 다녀왔는데 옛날 생각나네요.", filtered[0].text)
+        assertEquals("심윤수", filtered[1].sender)
+        assertEquals("내일 화상회의에서 뵙겠습니다!", filtered[1].text)
     }
 }

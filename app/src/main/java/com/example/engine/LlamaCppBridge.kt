@@ -34,11 +34,11 @@ class LlamaCppBridge(private val context: Context) : Closeable {
     var nThreads: Int = 4
     var nGpuLayers: Int = 0
     var contextSize: Int = 2048
-    var temperature: Float = 0.7f
-    var topP: Float = 0.9f
+    var temperature: Float = 0.35f
+    var topP: Float = 0.85f
     var topK: Int = 40
-    var repeatPenalty: Float = 1.1f
-    var maxTokens: Int = 1024
+    var repeatPenalty: Float = 1.15f
+    var maxTokens: Int = 512
     var useMlock: Boolean = false
 
     companion object {

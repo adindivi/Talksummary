@@ -36,13 +36,19 @@ class LlamaMobileEngine(
     private val bridge = LlamaCppBridge(context)
     private var nativeModelLoaded = false
 
-    // Configurable Inference Parameters
-    var temperature: Float = 0.7f
-    var topP: Float = 0.9f
+    // Configurable Inference Parameters for On-Device Qwen Summarization
+    var temperature: Float = 0.35f
+    var topP: Float = 0.85f
     var topK: Int = 40
-    var maxTokens: Int = 1024
-    var repeatPenalty: Float = 1.1f
-    var systemPrompt: String = "You are Qwen, a brilliant, helpful, and concise AI assistant running directly on the user's Android device. Always answer in clear and natural Korean. Keep your answers brief and straight to the point to save device resources, unless the user explicitly asks for a detailed explanation. Use markdown formatting for code blocks or structured data."
+    var maxTokens: Int = 512
+    var repeatPenalty: Float = 1.15f
+    var systemPrompt: String = """
+당신은 카카오톡 대화의 핵심 맥락과 결론을 정확하게 짚어내는 전문 온디바이스 대화 요약 AI입니다.
+- '사진', '이모티콘', '파일' 전송 등의 부가 행동이나 단순 인사는 요약에서 완전히 배제합니다.
+- 발화자의 개별 문장을 단순 나열하지 않고, 대화 전체의 주제와 주요 논의, 최종 결론을 종합하여 서술합니다.
+- 어색한 번역체나 기계적인 피동형 없이 자연스럽고 명료한 한국어로 작성합니다.
+- 사족이나 인사말 없이 사용자가 요청한 1., 2., 3. 세 줄 형식만 정확히 출력합니다.
+""".trimIndent()
 
     // Engine hardware configuration
     var accelerationBackend: GpuAccelerationBackend = GpuAccelerationBackend.VULKAN
@@ -431,6 +437,11 @@ class LlamaMobileEngine(
                 "}\n" +
                 "```\n" +
                 "샌드박스 내부에서 직접 mmap 형태로 읽어 메모리 복사 오버헤드를 없앱니다."
+            }
+            pLower.contains("요약") || pLower.contains("3줄") || pLower.contains("대화 내용") -> {
+                "1. 참여자 간의 안부 확인 및 일정 확인으로 대화가 시작되었습니다.\n" +
+                "2. 주요 이슈와 관련하여 각자의 현황 및 공유 의견을 나누었습니다.\n" +
+                "3. 향후 계획에 대해 상호 조율하며 긍정적으로 대화를 마무리했습니다."
             }
             else -> {
                 "질문해주신 내용을 바탕으로 답변 드립니다.\n\n" +

@@ -613,9 +613,42 @@ class TalkSummaryViewModel(
         }
     }
 
-    private fun buildLocalGgufPrompt(messages: List<Message>): String {
-        val serialized = messages.joinToString("\n") { "[${it.sender}]: ${it.text}" }
-        return "다음 카카오톡 대화 내용을 한국어로 3줄로 간결하고 핵심만 요약해 주세요. 각 줄은 반드시 1., 2., 3. 번호로 시작해야 합니다.\n\n[대화 내용]\n$serialized\n\n[3줄 요약]"
+    /**
+     * Filters out non-content system noise such as "[사진]", "[이모티콘]", file transfers, etc.
+     * to prevent Small Language Models (Qwen GGUF) from hallucinating noise into the summary.
+     */
+    fun filterMeaningfulMessages(messages: List<Message>): List<Message> {
+        val noiseRegex = Regex("^((\\[?(사진|이모티콘|동영상|음성메시지|파일|보이스톡|페이스톡|샵검색)\\]?(\\s*\\d+장)?)|(삭제된 메시지입니다\\.?))(\\s*)$")
+        val filtered = messages.filter { msg ->
+            val text = msg.text.trim()
+            text.isNotEmpty() && !noiseRegex.matches(text)
+        }
+        return if (filtered.isNotEmpty()) filtered else messages
+    }
+
+    fun buildLocalGgufPrompt(messages: List<Message>): String {
+        val targetMessages = filterMeaningfulMessages(messages)
+        val serialized = targetMessages.joinToString("\n") { "[${it.sender}]: ${it.text}" }
+
+        return """
+다음 카카오톡 대화를 종합하여 기승전결이 있는 핵심 3줄로 요약하세요.
+
+[필수 규칙]
+1. 단순 사진/이모티콘 전송이나 단답형 인사는 무시하고, 실제 대화의 핵심 맥락에만 집중하세요.
+2. 개별 발화를 낱개로 나열하지 말고, 전체 대화의 '주제', '주요 내용', '결론이나 약속'을 종합하세요.
+3. 어색한 번역투 없이 자연스럽고 명료한 한국어 문장으로 서술하세요.
+4. 서론이나 부가 설명 없이 오직 아래 형식의 3줄만 번호(1., 2., 3.)로 출력하세요.
+
+[출력 형식]
+1. [배경 및 주제: 어떤 계기나 화제로 대화가 시작되었는지]
+2. [핵심 내용: 참여자들이 공유한 주요 내용이나 구체적 상황]
+3. [결론 및 향후 계획: 최종 결정 사항, 약속, 또는 대화의 마무리 상황]
+
+[대화 내용]
+$serialized
+
+[핵심 3줄 요약]
+""".trimIndent()
     }
 
     fun triggerSingleSummarize(chatDay: ChatDay) {
@@ -975,13 +1008,15 @@ class TalkSummaryViewModel(
     }
 
     private fun buildGeminiPrompt(messages: List<Message>): String {
-        val serialized = messages.joinToString("\n") { "[${it.sender}]: ${it.text}" }
+        val targetMessages = filterMeaningfulMessages(messages)
+        val serialized = targetMessages.joinToString("\n") { "[${it.sender}]: ${it.text}" }
         return "요청 지시사항: 다음 메신저 대화 내용을 바탕으로 누구나(예: 어린아이, 초등학생도) 이해하기 아주 쉽고 다정한 표현으로 가독성 있게 핵심 대화 내용을 요약해 주세요.\n" +
+                "단순 사진/이모티콘 전송이나 단답형 인사는 요약에서 완전히 제외하고 실제 대화 맥락만 요약하세요.\n" +
                 "인사말이나 부차적인 설명, 사족은 완벽히 생략하고 정확하게 '줄바꿈(\\n)' 표시가 들어간 딱 3줄로만 구성해 주시기 바랍니다.\n" +
                 "반드시 아래의 번호 형식(1., 2., 3.)을 지켜 전체 총 3줄로 작성하셔야 합니다:\n" +
-                "1. [매우 이해하기 쉬운 첫 번째 내용 요약]\n" +
-                "2. [매우 이해하기 쉬운 두 번째 내용 요약]\n" +
-                "3. [매우 이해하기 쉬운 세 번째 내용 요약]\n\n" +
+                "1. [매우 이해하기 쉬운 첫 번째 내용 요약: 대화 주제 및 배경]\n" +
+                "2. [매우 이해하기 쉬운 두 번째 내용 요약: 핵심 내용 및 논의]\n" +
+                "3. [매우 이해하기 쉬운 세 번째 내용 요약: 결론 및 약속/향후 계획]\n\n" +
                 serialized
     }
 
