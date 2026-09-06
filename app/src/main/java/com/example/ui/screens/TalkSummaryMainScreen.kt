@@ -2063,10 +2063,10 @@ fun GalaxySegmentedSwitcher(
         shape = RoundedCornerShape(999.dp),
         color = Color(0xFFF1F5F9),
         border = BorderStroke(0.8.dp, Color(0xFFE2E8F0)),
-        modifier = modifier.height(31.dp)
+        modifier = modifier.height(34.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.5.dp),
+            modifier = Modifier.padding(3.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -2077,12 +2077,15 @@ fun GalaxySegmentedSwitcher(
                     color = if (isSelected) Color.White else Color.Transparent,
                     border = if (isSelected) BorderStroke(0.7.dp, Color(0xFFCBD5E1)) else null,
                     shadowElevation = if (isSelected) 1.dp else 0.dp,
-                    modifier = Modifier.clickable { onModeSelect(mode) }
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .clickable { onModeSelect(mode) }
                 ) {
                     Box(
                         modifier = Modifier
+                            .fillMaxHeight()
                             .widthIn(min = 52.dp)
-                            .padding(horizontal = 6.dp, vertical = 2.5.dp),
+                            .padding(horizontal = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -2090,7 +2093,12 @@ fun GalaxySegmentedSwitcher(
                             fontSize = 11.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B),
-                            letterSpacing = (-0.2).sp
+                            letterSpacing = (-0.2).sp,
+                            style = LocalTextStyle.current.copy(
+                                platformStyle = @Suppress("DEPRECATION") androidx.compose.ui.text.PlatformTextStyle(
+                                    includeFontPadding = false
+                                )
+                            )
                         )
                     }
                 }
