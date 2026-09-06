@@ -6,13 +6,16 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -55,6 +58,7 @@ import com.example.model.GgufMetadata
 import com.example.service.TaskProgress
 import com.example.service.TaskStatus
 import com.example.ui.viewmodel.TalkSummaryViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
@@ -1551,69 +1555,137 @@ fun TimelineColumn(
                 }
             }
         } else {
-            when (timelineGroupingMode) {
-                TimelineGroupingMode.DAY -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(chatDays, key = { it.date }) { chatDay ->
-                            val isSummarizing = (activeSummarizingDate == chatDay.date && activeTask?.status == TaskStatus.RUNNING)
-                            TimelineItemCard(
-                                chatDay = chatDay,
-                                isSummarizing = isSummarizing,
-                                activeTask = if (isSummarizing) activeTask else null,
-                                onCancelTask = { viewModel.cancelActiveTask() },
-                                onSelect = { viewModel.selectChatDay(chatDay) },
-                                onAIPress = { viewModel.triggerSingleSummarize(chatDay) },
-                                onCopySummary = { text ->
-                                    clipboardManager.setText(AnnotatedString(text))
-                                    viewModel.showToast("대화 요약이 클립보드에 복사되었습니다.", "success")
+            Crossfade(
+                targetState = timelineGroupingMode,
+                animationSpec = tween(220, easing = FastOutSlowInEasing),
+                label = "TimelineGroupingCrossfade",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) { currentMode ->
+                when (currentMode) {
+                    TimelineGroupingMode.DAY -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(chatDays, key = { _, it -> it.date }) { index, chatDay ->
+                                val isSummarizing = (activeSummarizingDate == chatDay.date && activeTask?.status == TaskStatus.RUNNING)
+                                StaggeredListItem(
+                                    index = index,
+                                    key = "${currentMode}_${chatDay.date}"
+                                ) {
+                                    TimelineItemCard(
+                                        chatDay = chatDay,
+                                        isSummarizing = isSummarizing,
+                                        activeTask = if (isSummarizing) activeTask else null,
+                                        onCancelTask = { viewModel.cancelActiveTask() },
+                                        onSelect = { viewModel.selectChatDay(chatDay) },
+                                        onAIPress = { viewModel.triggerSingleSummarize(chatDay) },
+                                        onCopySummary = { text ->
+                                            clipboardManager.setText(AnnotatedString(text))
+                                            viewModel.showToast("대화 요약이 클립보드에 복사되었습니다.", "success")
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
-                }
-                TimelineGroupingMode.MONTH -> {
-                    val monthGroups = remember(chatDays) { groupChatDaysByMonth(chatDays) }
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(monthGroups, key = { it.yearMonthKey }) { monthData ->
-                            MonthSummaryCard(
-                                monthData = monthData,
-                                onViewDays = {
-                                    viewModel.filterByYearMonth(monthData.yearMonthKey)
+                    TimelineGroupingMode.MONTH -> {
+                        val monthGroups = remember(chatDays) { groupChatDaysByMonth(chatDays) }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(monthGroups, key = { _, it -> it.yearMonthKey }) { index, monthData ->
+                                StaggeredListItem(
+                                    index = index,
+                                    key = "${currentMode}_${monthData.yearMonthKey}"
+                                ) {
+                                    MonthSummaryCard(
+                                        monthData = monthData,
+                                        onViewDays = {
+                                            viewModel.filterByYearMonth(monthData.yearMonthKey)
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
-                }
-                TimelineGroupingMode.YEAR -> {
-                    val yearGroups = remember(chatDays) { groupChatDaysByYear(chatDays) }
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(yearGroups, key = { it.yearKey }) { yearData ->
-                            YearSummaryCard(
-                                yearData = yearData,
-                                onViewMonths = {
-                                    viewModel.filterByYear(yearData.yearKey)
+                    TimelineGroupingMode.YEAR -> {
+                        val yearGroups = remember(chatDays) { groupChatDaysByYear(chatDays) }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            itemsIndexed(yearGroups, key = { _, it -> it.yearKey }) { index, yearData ->
+                                StaggeredListItem(
+                                    index = index,
+                                    key = "${currentMode}_${yearData.yearKey}"
+                                ) {
+                                    YearSummaryCard(
+                                        yearData = yearData,
+                                        onViewMonths = {
+                                            viewModel.filterByYear(yearData.yearKey)
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Staggered entry animation wrapper (Fade-in & Slide-up)
+ * Creates a cascading, smooth Apple/Toss-style entry motion when tabs change or lists load.
+ */
+@Composable
+fun StaggeredListItem(
+    index: Int,
+    key: Any,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    var isVisible by remember(key) { mutableStateOf(false) }
+
+    LaunchedEffect(key) {
+        val delayMs = if (index <= 5) (index * 35L) else 0L
+        if (delayMs > 0L) {
+            delay(delayMs)
+        }
+        isVisible = true
+    }
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 280,
+            easing = FastOutSlowInEasing
+        ),
+        label = "staggeredAlpha"
+    )
+
+    val translateY by animateFloatAsState(
+        targetValue = if (isVisible) 0f else 22f,
+        animationSpec = tween(
+            durationMillis = 280,
+            easing = FastOutSlowInEasing
+        ),
+        label = "staggeredTranslateY"
+    )
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                this.alpha = alpha
+                this.translationY = translateY * density
+            }
+    ) {
+        content()
     }
 }
 
