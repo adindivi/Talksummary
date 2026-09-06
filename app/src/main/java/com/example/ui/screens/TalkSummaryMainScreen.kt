@@ -48,6 +48,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ChatDay
 import com.example.data.Message
 import com.example.model.GgufMetadata
+import com.example.service.TaskProgress
+import com.example.service.TaskStatus
 import com.example.ui.viewmodel.TalkSummaryViewModel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -130,7 +132,8 @@ fun TalkSummaryMainScreen(
     val errorTitle by viewModel.errorTitle.collectAsStateWithLifecycle()
     val errorDescription by viewModel.errorDescription.collectAsStateWithLifecycle()
 
-    // Loading & Toasts
+    // Background Tasks, Loading & Toasts
+    val activeTask by viewModel.activeTask.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val loadingTitle by viewModel.loadingTitle.collectAsStateWithLifecycle()
     val loadingMessage by viewModel.loadingMessage.collectAsStateWithLifecycle()
@@ -694,42 +697,153 @@ fun TalkSummaryMainScreen(
             }
         }
 
-        // Loading Overlay dialog
-        if (isLoading) {
+        // Background Task Progress & Loading Overlay Dialog
+        if (activeTask != null && activeTask?.status == TaskStatus.RUNNING) {
+            val task = activeTask!!
             Dialog(
-                onDismissRequest = {},
+                onDismissRequest = { /* Prevent dismissing on outside touch */ },
                 properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
             ) {
                 Card(
-                    modifier = Modifier.widthIn(min = 260.dp, max = 320.dp),
-                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .widthIn(min = 280.dp, max = 340.dp)
+                        .fillMaxWidth(0.92f),
+                    shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        CircularProgressIndicator(
-                            color = KakaoYellow,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = loadingTitle,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = BrandSlate
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = loadingMessage,
-                            fontSize = 11.sp,
-                            color = Color.Gray,
-                            textAlign = TextAlign.Center
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(54.dp)
+                                .background(Color(0xFFF8FAFC), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(34.dp),
+                                strokeWidth = 3.5.dp,
+                                color = BrandSlate,
+                                trackColor = Color(0xFFE2E8F0)
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text(
+                                text = task.title.ifEmpty { "작업 진행 중" },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = BrandSlate,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = task.detail.ifEmpty { "잠시만 기다려주세요..." },
+                                fontSize = 12.5.sp,
+                                lineHeight = 17.sp,
+                                color = Color(0xFF64748B),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        // Progress Indicator
+                        if (!task.isIndeterminate && task.total > 0) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { task.progressPercentage },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(7.dp)
+                                        .clip(RoundedCornerShape(3.5.dp)),
+                                    color = BrandGreenAccent,
+                                    trackColor = Color(0xFFE2E8F0)
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "${task.current} / ${task.total}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF64748B)
+                                    )
+                                    Text(
+                                        text = "${task.progressPercentInt}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BrandGreenAccent
+                                    )
+                                }
+                            }
+                        } else {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(2.5.dp)),
+                                color = Color(0xFF3B82F6),
+                                trackColor = Color(0xFFE2E8F0)
+                            )
+                        }
+
+                        // Safe Background Notice Pill
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF8FAFC),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = "Safe",
+                                    tint = Color(0xFF64748B),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "백그라운드에서도 안전하게 유지됩니다",
+                                    fontSize = 10.5.sp,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                        }
+
+                        // Cancel Button
+                        if (task.isCancellable) {
+                            OutlinedButton(
+                                onClick = { viewModel.cancelActiveTask() },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                                border = BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel",
+                                    modifier = Modifier.size(15.dp),
+                                    tint = Color(0xFFEF4444)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "작업 중단",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFEF4444)
+                                )
+                            }
+                        }
                     }
                 }
             }

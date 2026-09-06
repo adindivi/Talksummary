@@ -18,42 +18,57 @@ class TalkSummaryRepository(private val db: AppDatabase) {
         db.chatDayDao().getAllChatDays().map { ChatDayMapper.fromEntity(it) }
     }
 
-    suspend fun saveChatDays(parsedData: Map<String, List<Message>>) = withContext(Dispatchers.IO) {
-        parsedData.forEach { (date, messages) ->
-            if (messages.isEmpty()) return@forEach
-
-            // Check if there's already an existing record for this date to preserve AI summaries!
-            val existing = db.chatDayDao().getChatDayByDate(date)
-            // If it exists, keep the existing summary if it contains "[AI 정밀 요약]" or "[AI"
-            var summary = ""
-            var keywords = emptyList<String>()
-            var participants = emptyList<String>()
-
-            if (existing != null) {
-                summary = existing.summary
-                // Parse existing keywords and participants
-                val mapped = ChatDayMapper.fromEntity(existing)
-                keywords = mapped.keywords
-                participants = mapped.participants
+    suspend fun saveChatDays(
+        parsedData: Map<String, List<Message>>,
+        onProgress: ((current: Int, total: Int) -> Unit)? = null
+    ) {
+        // Step 1: Pre-compute CPU intensive heuristic analysis on Dispatchers.Default
+        val precomputed = withContext(Dispatchers.Default) {
+            val total = parsedData.size
+            var count = 0
+            parsedData.mapNotNull { (date, messages) ->
+                if (messages.isEmpty()) return@mapNotNull null
+                val heuristic = generateHeuristicSummary(messages)
+                count++
+                onProgress?.invoke(count, total)
+                Triple(date, messages, heuristic)
             }
+        }
 
-            if (summary.isEmpty() || (!summary.contains("AI") && !summary.contains("요약"))) {
-                // Generate a heuristic summary if no existing AI summary
-                val localSummary = generateHeuristicSummary(messages)
-                summary = localSummary.text
-                keywords = localSummary.keywords
-                participants = localSummary.participants
+        // Step 2: Perform DB transaction and insertions on Dispatchers.IO
+        withContext(Dispatchers.IO) {
+            precomputed.forEach { (date, messages, heuristic) ->
+                // Check if there's already an existing record for this date to preserve AI summaries!
+                val existing = db.chatDayDao().getChatDayByDate(date)
+                var summary = ""
+                var keywords = emptyList<String>()
+                var participants = emptyList<String>()
+
+                if (existing != null) {
+                    summary = existing.summary
+                    // Parse existing keywords and participants
+                    val mapped = ChatDayMapper.fromEntity(existing)
+                    keywords = mapped.keywords
+                    participants = mapped.participants
+                }
+
+                if (summary.isEmpty() || (!summary.contains("AI") && !summary.contains("요약"))) {
+                    // Use precomputed heuristic summary if no existing AI summary
+                    summary = heuristic.text
+                    keywords = heuristic.keywords
+                    participants = heuristic.participants
+                }
+
+                val entity = ChatDayMapper.toEntity(
+                    date = date,
+                    messages = messages,
+                    summary = summary,
+                    keywords = keywords,
+                    participants = participants,
+                    msgCount = messages.size
+                )
+                db.chatDayDao().insertChatDay(entity)
             }
-
-            val entity = ChatDayMapper.toEntity(
-                date = date,
-                messages = messages,
-                summary = summary,
-                keywords = keywords,
-                participants = participants,
-                msgCount = messages.size
-            )
-            db.chatDayDao().insertChatDay(entity)
         }
     }
 

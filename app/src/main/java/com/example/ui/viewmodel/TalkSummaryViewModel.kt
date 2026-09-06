@@ -20,16 +20,25 @@ import com.example.data.api.Part as ApiPart
 import com.example.data.api.GenerationConfig
 import com.example.data.db.AppDatabase
 import com.example.data.parser.KakaoTalkParser
+import com.example.data.llm.ModelLoader
+import com.example.engine.GgufParser
+import com.example.engine.StreamTokenEvent
+import com.example.model.GgufMetadata
+import com.example.service.BackgroundTaskManager
+import com.example.service.InferenceForegroundService
+import com.example.service.TaskProgress
+import com.example.service.TaskStatus
+import com.example.service.TaskType
+import com.example.util.AppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-import com.example.data.llm.ModelLoader
-import com.example.model.GgufMetadata
-import com.example.service.InferenceForegroundService
-import com.example.engine.StreamTokenEvent
+import java.io.File
+import java.util.Locale
 
 class TalkSummaryViewModel(
     application: Application,
@@ -37,6 +46,10 @@ class TalkSummaryViewModel(
 ) : AndroidViewModel(application) {
 
     private val modelLoader = ModelLoader(application)
+
+    // Background Task Manager
+    val backgroundTaskManager = BackgroundTaskManager()
+    val activeTask: StateFlow<TaskProgress?> = backgroundTaskManager.activeTask
 
     // GGUF Model State
     private val _loadedGgufMetadata = MutableStateFlow<GgufMetadata?>(null)
@@ -113,15 +126,24 @@ class TalkSummaryViewModel(
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
-    // Loading overlay
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
+    // Loading overlay (synced with backgroundTaskManager for full backward compatibility)
+    val isLoading = backgroundTaskManager.activeTask.map { it != null && it.status == TaskStatus.RUNNING }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false
+    )
 
-    private val _loadingTitle = MutableStateFlow("")
-    val loadingTitle = _loadingTitle.asStateFlow()
+    val loadingTitle = backgroundTaskManager.activeTask.map { it?.title ?: "" }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = ""
+    )
 
-    private val _loadingMessage = MutableStateFlow("")
-    val loadingMessage = _loadingMessage.asStateFlow()
+    val loadingMessage = backgroundTaskManager.activeTask.map { it?.detail ?: "" }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = ""
+    )
 
     // Toast notifications
     private val _toastMessage = MutableStateFlow<String?>(null)
@@ -164,6 +186,7 @@ class TalkSummaryViewModel(
     init {
         loadAllSettings()
         setupNetworkListener()
+        setupAbortListener()
         viewModelScope.launch {
             timelineData.collect { list ->
                 _parserState.value = if (list.isNotEmpty()) "정상작동" else "빈 보관소"
@@ -179,13 +202,22 @@ class TalkSummaryViewModel(
                 val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 cm.unregisterNetworkCallback(callback)
             } catch (e: Exception) {
-                com.example.util.AppLogger.e("TalkSummaryViewModel", "Failed to unregister network callback: ${e.message}")
+                AppLogger.e("TalkSummaryViewModel", "Failed to unregister network callback: ${e.message}")
+            }
+        }
+    }
+
+    private fun setupAbortListener() {
+        viewModelScope.launch {
+            InferenceForegroundService.abortEvents.collect {
+                AppLogger.i("TalkSummaryViewModel", "Received abort event from Foreground Service Notification")
+                cancelActiveTask("상단 알림바에서 작업 중단이 요청되었습니다.")
             }
         }
     }
 
     private fun loadAllSettings() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val key = repository.getSetting("gemini_api_key") ?: ""
             _geminiApiKey.value = key
 
@@ -199,9 +231,9 @@ class TalkSummaryViewModel(
             _localModelPath.value = localPath
 
             if (localPath.isNotEmpty()) {
-                val file = java.io.File(localPath)
+                val file = File(localPath)
                 if (file.exists()) {
-                    val parsed = com.example.engine.GgufParser.parse(file)
+                    val parsed = GgufParser.parse(file)
                     if (parsed.isSuccess) {
                         _loadedGgufMetadata.value = parsed.getOrNull()
                     }
@@ -250,7 +282,6 @@ class TalkSummaryViewModel(
 
     fun selectChatDay(chatDay: ChatDay?) {
         _selectedChatDay.value = chatDay
-        // Whenever a new chat day is selected, set standard mainUser if empty
         if (chatDay != null && (_mainUser.value.isEmpty() || !chatDay.participants.contains(_mainUser.value))) {
             val firstParticipant = chatDay.participants.firstOrNull() ?: ""
             setMainUser(firstParticipant)
@@ -278,7 +309,7 @@ class TalkSummaryViewModel(
 
     fun setMainUser(name: String) {
         _mainUser.value = name
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.saveSetting("main_user_name", name)
         }
     }
@@ -310,7 +341,7 @@ class TalkSummaryViewModel(
     }
 
     fun saveSettings(key: String, useGemini: Boolean, model: String, useLocal: Boolean = false, localPath: String = "") {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _geminiApiKey.value = key
             _useGemini.value = useGemini
             _activeModel.value = model
@@ -329,6 +360,20 @@ class TalkSummaryViewModel(
         }
     }
 
+    fun cancelActiveTask(reason: String = "사용자에 의해 작업이 취소되었습니다.") {
+        if (backgroundTaskManager.isRunning) {
+            modelLoader.stopInference()
+            backgroundTaskManager.cancelTask(reason)
+            InferenceForegroundService.stop(getApplication())
+            _isProcessing.value = false
+            showToast(reason, "info")
+        }
+    }
+
+    fun dismissTaskProgress() {
+        backgroundTaskManager.clearTask()
+    }
+
     fun parseAndImportText(rawText: String) {
         if (_isProcessing.value) {
             showToast("현재 다른 작업이 진행 중입니다. 잠시만 기다려주세요.", "info")
@@ -336,31 +381,66 @@ class TalkSummaryViewModel(
         }
         _showPasteModal.value = false
         _isProcessing.value = true
-        showLoading("대화 대용량 텍스트 해석", "클라이언트 측 가상 샌드박스에서 대화를 분석 중...")
+
         viewModelScope.launch {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.PARSE_CHAT,
+                title = "대화 텍스트 해석 및 정밀 분석",
+                detail = "대화 내용을 안전하게 파싱하고 있습니다...",
+                isIndeterminate = true,
+                isCancellable = true
+            )
+            InferenceForegroundService.start(getApplication(), "⚡ 대화 텍스트 해석 중", "대화 분석 및 저장 진행 중...")
+
             try {
+                // Step 1: CPU-intensive regex parsing completely isolated on Dispatchers.Default
                 val parsed = withContext(Dispatchers.Default) {
                     KakaoTalkParser.parse(rawText)
                 }
+
+                coroutineContext.ensureActive()
+
                 if (parsed.isEmpty()) {
+                    backgroundTaskManager.failTask("대화 줄 형식을 찾을 수 없습니다.")
                     showError("가져오기 실패", "카카오톡의 날짜 또는 대화 줄 형식을 하나도 찾을 수 없습니다.\n올바른 형태의 카카오톡 대화 내용 텍스트인지 다시 한 번 확인해 주세요.")
                     return@launch
                 }
-                // Overwrite old parsed documents automatically when importing new files/texts
+
+                // Step 2: Database saving with progress updates on Dispatchers.IO
+                backgroundTaskManager.updateProgress(0, parsed.size, "데이터베이스에 대화 내역 저장 중 (0/${parsed.size})...", false)
                 repository.clearAll()
-                repository.saveChatDays(parsed)
-                showToast("대화가 동기화 및 덮어쓰기 완료되었습니다!", "success")
-                // Reset selections
+                repository.saveChatDays(parsed) { current, total ->
+                    backgroundTaskManager.updateProgress(
+                        current = current,
+                        total = total,
+                        detail = "데이터베이스에 대화 내역 저장 중 (${current}/${total}일치)...",
+                        isIndeterminate = false
+                    )
+                    InferenceForegroundService.updateProgress(
+                        getApplication(),
+                        "대화 저장 중 (${current}/${total})",
+                        current,
+                        total
+                    )
+                }
+
                 selectChatDay(null)
+                backgroundTaskManager.completeTask("총 ${parsed.size}일 분량의 대화가 성공적으로 동기화되었습니다.")
+                showToast("대화가 동기화 및 덮어쓰기 완료되었습니다!", "success")
+            } catch (ce: CancellationException) {
+                AppLogger.i("TalkSummaryViewModel", "parseAndImportText cancelled")
+                backgroundTaskManager.cancelTask("대화 가져오기 작업이 취소되었습니다.")
             } catch (oom: OutOfMemoryError) {
-                com.example.util.AppLogger.e("TalkSummaryViewModel", "Out of memory during text parsing", oom)
+                AppLogger.e("TalkSummaryViewModel", "Out of memory during text parsing", oom)
+                backgroundTaskManager.failTask("기기 메모리 부족으로 처리가 중단되었습니다.")
                 showError("메모리 부족", "대화 텍스트가 너무 방대하여 기기 메모리에서 처리할 수 없습니다. 텍스트를 나누어 입력해 주세요.")
             } catch (e: Exception) {
-                com.example.util.AppLogger.e("TalkSummaryViewModel", "Error parsing text", e)
+                AppLogger.e("TalkSummaryViewModel", "Error parsing text", e)
+                backgroundTaskManager.failTask("대화 해석 중 오류가 발생했습니다: ${e.localizedMessage}")
                 showError("대화 해석 오류", "대화 해석 중 오류가 발생했습니다: ${e.localizedMessage}")
             } finally {
+                InferenceForegroundService.stop(getApplication())
                 _isProcessing.value = false
-                hideLoading()
             }
         }
     }
@@ -372,50 +452,97 @@ class TalkSummaryViewModel(
         }
         _showPasteModal.value = false
         _isProcessing.value = true
-        showLoading("대화 대용량 텍스트 해석", "클라이언트 측 가상 샌드박스에서 대화를 인코딩 자동 분석하며 해석 중...")
+
         viewModelScope.launch {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.PARSE_CHAT,
+                title = "대용량 대화 파일 해석 및 파싱",
+                detail = "바이트 인코딩 감지 및 구문 해석 중...",
+                isIndeterminate = true,
+                isCancellable = true
+            )
+            InferenceForegroundService.start(getApplication(), "⚡ 대화 파일 해석 중", "인코딩 감지 및 구문 분석...")
+
             try {
+                // Step 1: CPU-intensive byte parsing on Dispatchers.Default
                 val parsed = withContext(Dispatchers.Default) {
                     KakaoTalkParser.parseFromBytes(bytes)
                 }
+
+                coroutineContext.ensureActive()
+
                 if (parsed.isEmpty()) {
+                    backgroundTaskManager.failTask("카카오톡 대화 줄 형식을 찾을 수 없습니다.")
                     showError("가져오기 실패", "카카오톡의 대화 줄 형식을 하나도 찾을 수 없습니다.\n올바른 형태의 카카오톡 대화 내용 텍스트 파일 (.txt)을 다시 한 번 확인해 주세요.")
                     return@launch
                 }
-                // Overwrite old parsed documents automatically when importing new files/texts
+
+                // Step 2: Database saving with progress updates on Dispatchers.IO
+                backgroundTaskManager.updateProgress(0, parsed.size, "데이터베이스에 대화 내역 저장 중 (0/${parsed.size})...", false)
                 repository.clearAll()
-                repository.saveChatDays(parsed)
-                showToast("대화가 동기화 및 덮어쓰기 완료되었습니다!", "success")
-                // Reset selections
+                repository.saveChatDays(parsed) { current, total ->
+                    backgroundTaskManager.updateProgress(
+                        current = current,
+                        total = total,
+                        detail = "데이터베이스에 대화 내역 저장 중 (${current}/${total}일치)...",
+                        isIndeterminate = false
+                    )
+                    InferenceForegroundService.updateProgress(
+                        getApplication(),
+                        "대화 저장 중 (${current}/${total})",
+                        current,
+                        total
+                    )
+                }
+
                 selectChatDay(null)
+                backgroundTaskManager.completeTask("총 ${parsed.size}일 분량의 대화가 성공적으로 동기화되었습니다.")
+                showToast("대화가 동기화 및 덮어쓰기 완료되었습니다!", "success")
+            } catch (ce: CancellationException) {
+                AppLogger.i("TalkSummaryViewModel", "parseAndImportBytes cancelled")
+                backgroundTaskManager.cancelTask("대화 파일 가져오기 작업이 취소되었습니다.")
             } catch (oom: OutOfMemoryError) {
-                com.example.util.AppLogger.e("TalkSummaryViewModel", "Out of memory during byte parsing", oom)
+                AppLogger.e("TalkSummaryViewModel", "Out of memory during byte parsing", oom)
+                backgroundTaskManager.failTask("기기 메모리 부족으로 처리가 중단되었습니다.")
                 showError("메모리 부족", "대화 파일이 너무 커서 기기 메모리에서 처리할 수 없습니다. 대화 파일을 분할하여 불러와 주세요.")
             } catch (e: Exception) {
-                com.example.util.AppLogger.e("TalkSummaryViewModel", "Error parsing bytes", e)
+                AppLogger.e("TalkSummaryViewModel", "Error parsing bytes", e)
+                backgroundTaskManager.failTask("대화 파일 해석 오류: ${e.localizedMessage}")
                 showError("대화 해석 오류", "대화 파일 해석 중 오류가 발생했습니다: ${e.localizedMessage}")
             } finally {
+                InferenceForegroundService.stop(getApplication())
                 _isProcessing.value = false
-                hideLoading()
             }
         }
     }
 
     fun clearAllData() {
-        showLoading("데이터 삭제", "폰 내부의 대화 및 요약 데이터를 정리하고 있습니다...")
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.clearAll()
-            // Do NOT call repository.clearAllSettings() or delete _geminiApiKey, _useGemini, _mainUser
             selectChatDay(null)
             updateAiState()
-            hideLoading()
             showToast("보관된 대화 업로드 자료가 성공적으로 초기화되었습니다.", "success")
         }
     }
 
     fun copyAndSetLocalModel(context: Context, uri: android.net.Uri) {
-        showLoading("GGUF 모델 복사 중", "선택한 GGUF 모델 파일을 앱 샌드박스로 안전하게 복사하고 있습니다. 대용량 파일의 경우 수 분이 소요될 수 있습니다.")
+        if (_isProcessing.value) {
+            showToast("현재 다른 작업이 진행 중입니다.", "info")
+            return
+        }
+        _isProcessing.value = true
+
         viewModelScope.launch(Dispatchers.IO) {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.GGUF_MODEL_IMPORT,
+                title = "GGUF 모델 탑재",
+                detail = "선택한 GGUF 모델을 앱 샌드박스로 안전하게 복사하고 있습니다...",
+                total = 100,
+                isIndeterminate = false,
+                isCancellable = true
+            )
+            InferenceForegroundService.start(getApplication(), "⚡ GGUF 모델 복사 중", "모델 파일 임포트 진행 중...")
+
             try {
                 var rawName = "model.gguf"
                 context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -430,15 +557,18 @@ class TalkSummaryViewModel(
 
                 val importResult = modelLoader.sandboxManager.importGgufToSandbox(uri, rawName) { progress ->
                     val percent = (progress * 100).toInt()
-                    _loadingMessage.value = "모델 복사 진행률: $percent% (잠시만 기다려주세요)"
+                    backgroundTaskManager.updateProgress(percent, 100, "모델 파일 복사 진행률: $percent%")
+                    InferenceForegroundService.updateProgress(getApplication(), "모델 복사 중 ($percent%)", percent, 100)
                 }
+
+                coroutineContext.ensureActive()
 
                 if (importResult.isFailure) {
                     throw importResult.exceptionOrNull() ?: Exception("GGUF 파일 임포트 실패")
                 }
 
                 val targetFile = importResult.getOrThrow()
-                _loadingMessage.value = "GGUF 헤더 구조 및 양자화 파싱 중..."
+                backgroundTaskManager.updateDetail("GGUF 바이너리 구조 및 양자화 파싱 중...")
 
                 val loadResult = modelLoader.loadModel(targetFile.absolutePath)
                 if (loadResult.isFailure) {
@@ -447,19 +577,23 @@ class TalkSummaryViewModel(
 
                 val meta = loadResult.getOrThrow()
 
-                withContext(Dispatchers.Main) {
-                    _localModelPath.value = targetFile.absolutePath
-                    _loadedGgufMetadata.value = meta
-                    repository.saveSetting("local_model_path", targetFile.absolutePath)
-                    updateAiState()
-                    hideLoading()
-                    showToast("GGUF 모델 탑재 성공: ${meta.modelName} (${meta.quantizationType.label})", "success")
-                }
+                _localModelPath.value = targetFile.absolutePath
+                _loadedGgufMetadata.value = meta
+                repository.saveSetting("local_model_path", targetFile.absolutePath)
+                updateAiState()
+
+                backgroundTaskManager.completeTask("GGUF 모델 탑재 완료: ${meta.modelName}")
+                showToast("GGUF 모델 탑재 성공: ${meta.modelName} (${meta.quantizationType.label})", "success")
+            } catch (ce: CancellationException) {
+                AppLogger.i("TalkSummaryViewModel", "copyAndSetLocalModel cancelled")
+                backgroundTaskManager.cancelTask("모델 복사 작업이 취소되었습니다.")
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    hideLoading()
-                    showError("GGUF 모델 로드 실패", "GGUF 모델을 처리하는 중 오류가 발생했습니다: ${e.message}")
-                }
+                AppLogger.e("TalkSummaryViewModel", "copyAndSetLocalModel error: ${e.message}", e)
+                backgroundTaskManager.failTask("GGUF 모델 탑재 실패: ${e.message}")
+                showError("GGUF 모델 로드 실패", "GGUF 모델을 처리하는 중 오류가 발생했습니다: ${e.message}")
+            } finally {
+                InferenceForegroundService.stop(getApplication())
+                _isProcessing.value = false
             }
         }
     }
@@ -489,16 +623,26 @@ class TalkSummaryViewModel(
             return
         }
 
-        val title = if (useLocal) "로컬 GGUF AI 요약" else "AI 정밀 대화 압축"
-        val message = if (useLocal) "온디바이스 llama.cpp C++ 엔진으로 요약 중입니다..." else "구글 제미나이 언어 인스턴스로 요약 전송 중..."
+        val title = if (useLocal) "온디바이스 GGUF AI 요약" else "Google Gemini AI 요약"
+        val message = if (useLocal) "${chatDay.date} 온디바이스 C++ llama.cpp 엔진 추론 중..." else "${chatDay.date} 구글 제미나이 언어 모델로 요약 전송 중..."
 
-        showLoading(title, message)
         _isProcessing.value = true
 
         viewModelScope.launch {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.SINGLE_AI_SUMMARY,
+                title = title,
+                detail = message,
+                isIndeterminate = true,
+                isCancellable = true,
+                onCancel = {
+                    if (useLocal) modelLoader.stopInference()
+                }
+            )
+            InferenceForegroundService.start(getApplication(), "⚡ $title", message)
+
             try {
                 val responseText = if (useLocal) {
-                    InferenceForegroundService.start(getApplication(), "온디바이스 GGUF 대화 요약 중...")
                     val localPrompt = buildLocalGgufPrompt(chatDay.messages)
                     val startTime = System.currentTimeMillis()
                     
@@ -513,12 +657,15 @@ class TalkSummaryViewModel(
                     var tokensCount = 0
 
                     modelLoader.streamResponse(localPrompt).collect { event ->
+                        coroutineContext.ensureActive()
                         when (event) {
                             is StreamTokenEvent.Token -> {
                                 lastTps = event.tokensPerSecond
                                 tokensCount = event.tokensGenerated
-                                _localInferenceStats.value = "속도: ${String.format(java.util.Locale.US, "%.1f", lastTps)} tok/s | 생성: ${tokensCount}토큰"
-                                InferenceForegroundService.updateProgress(getApplication(), "GGUF 토큰 생성 중...", lastTps)
+                                val stats = "속도: ${String.format(Locale.US, "%.1f", lastTps)} tok/s | 생성: ${tokensCount}토큰"
+                                _localInferenceStats.value = stats
+                                backgroundTaskManager.updateDetail("${chatDay.date} 토큰 생성 중... (${tokensCount}토큰, ${String.format(Locale.US, "%.1f", lastTps)} tok/s)")
+                                InferenceForegroundService.updateProgress(getApplication(), "GGUF 토큰 생성 중...", 0, 0, title, lastTps)
                             }
                             is StreamTokenEvent.Completed -> {
                                 generatedText = event.fullText
@@ -534,7 +681,7 @@ class TalkSummaryViewModel(
                     val durationSec = (System.currentTimeMillis() - startTime) / 1000.0
                     val runtime = Runtime.getRuntime()
                     val usedMemMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
-                    _localInferenceStats.value = "완료: ${String.format(java.util.Locale.US, "%.1f", lastTps)} tok/s | ${tokensCount}토큰 (${String.format(java.util.Locale.US, "%.1f", durationSec)}s) | 메모리: ${usedMemMb}MB"
+                    _localInferenceStats.value = "완료: ${String.format(Locale.US, "%.1f", lastTps)} tok/s | ${tokensCount}토큰 (${String.format(Locale.US, "%.1f", durationSec)}s) | 메모리: ${usedMemMb}MB"
                     
                     viewModelScope.launch {
                         delay(10000)
@@ -547,32 +694,37 @@ class TalkSummaryViewModel(
                     requestGemini(prompt, key, _activeModel.value)
                 }
 
-                if (responseText != null && responseText.isNotEmpty()) {
+                coroutineContext.ensureActive()
+
+                if (!responseText.isNullOrEmpty()) {
                     val formatted = "[AI 정밀 요약]\n$responseText"
                     repository.updateSummary(chatDay.date, formatted)
                     
-                    // Update active selected day if it matches
                     if (_selectedChatDay.value?.date == chatDay.date) {
                         _selectedChatDay.value = _selectedChatDay.value?.copy(summary = formatted)
                     }
+                    backgroundTaskManager.completeTask("${chatDay.date} AI 요약이 성공적으로 생성되었습니다.")
                     showToast("성공적으로 인공지능 요약 갱신이 완료되었습니다.", "success")
                 } else {
                     val error = _lastErrorInfo.value
                     if (error != null) {
+                        backgroundTaskManager.failTask(error.description)
                         showError(error.title, error.description)
                     } else {
+                        backgroundTaskManager.failTask("AI 모델로부터 적합한 응답이 도착하지 않았습니다.")
                         showError("요약 실패", "AI 모델로부터 적합한 응답이 도착하지 않았습니다. 네트워크 상태 혹은 API Key 설정을 확인해 주세요.")
                     }
                 }
+            } catch (ce: CancellationException) {
+                AppLogger.i("TalkSummaryViewModel", "triggerSingleSummarize cancelled")
+                backgroundTaskManager.cancelTask("AI 요약 생성이 사용자에 의해 취소되었습니다.")
             } catch (e: Exception) {
-                com.example.util.AppLogger.e("TalkSummaryViewModel", "AI summarization error", e)
+                AppLogger.e("TalkSummaryViewModel", "AI summarization error", e)
+                backgroundTaskManager.failTask("AI 요약 처리 오류: ${e.localizedMessage}")
                 showError("요약 처리 오류", "AI 모델 처리 중 오류가 발생했습니다: ${e.localizedMessage}")
             } finally {
-                if (useLocal) {
-                    InferenceForegroundService.stop(getApplication())
-                }
+                InferenceForegroundService.stop(getApplication())
                 _isProcessing.value = false
-                hideLoading()
             }
         }
     }
@@ -596,18 +748,46 @@ class TalkSummaryViewModel(
             return
         }
 
-        showLoading("일괄 AI 요약 진행", "총 ${unsummarized.size}개의 일자를 요약 중입니다. 잠시만 기다려주세요.")
+        val total = unsummarized.size
         _isProcessing.value = true
 
         viewModelScope.launch {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.BULK_AI_SUMMARY,
+                title = "전체 대화 일괄 AI 요약",
+                detail = "총 ${total}개 일자 요약 준비 중...",
+                total = total,
+                isIndeterminate = false,
+                isCancellable = true
+            )
+            InferenceForegroundService.start(
+                getApplication(),
+                "⚡ 전체 대화 일괄 AI 요약",
+                "요약 준비 중... (총 ${total}일)",
+                0,
+                total
+            )
+
             var count = 0
+            var failCount = 0
             try {
                 for (item in unsummarized) {
+                    coroutineContext.ensureActive()
                     count++
-                    _loadingMessage.value = "(${count}/${unsummarized.size}) ${item.date} 요약 중..."
+                    val progressDesc = "(${count}/${total}) ${item.date} 요약 중..."
+                    backgroundTaskManager.updateProgress(count, total, progressDesc, false)
+                    InferenceForegroundService.updateProgress(
+                        getApplication(),
+                        progressDesc,
+                        count,
+                        total,
+                        "⚡ 전체 대화 일괄 AI 요약"
+                    )
+
                     try {
                         val prompt = buildGeminiPrompt(item.messages)
                         val result = requestGemini(prompt, key, _activeModel.value)
+                        coroutineContext.ensureActive()
                         if (result != null) {
                             val formatted = "[AI 정밀 요약]\n$result"
                             repository.updateSummary(item.date, formatted)
@@ -615,21 +795,32 @@ class TalkSummaryViewModel(
                                 _selectedChatDay.value = _selectedChatDay.value?.copy(summary = formatted)
                             }
                         } else {
+                            failCount++
                             val err = _lastErrorInfo.value
                             if (err != null && (err.isQuotaExceeded || err.isInvalidKey)) {
+                                backgroundTaskManager.failTask("(${item.date} 요약 중 중단됨) ${err.description}")
                                 showError(err.title, "(${item.date} 요약 중 중단됨)\n${err.description}")
                                 break
                             }
                         }
                         delay(1200) // Rate limiting pacing delay
+                    } catch (ce: CancellationException) {
+                        throw ce
                     } catch (e: Exception) {
-                        com.example.util.AppLogger.e("TalkSummaryViewModel", "Error summarizing ${item.date}", e)
+                        failCount++
+                        AppLogger.e("TalkSummaryViewModel", "Error summarizing ${item.date}", e)
                     }
                 }
-                showToast("전체 날짜 일괄 요약 분석이 완료되었습니다!", "success")
+                if (backgroundTaskManager.isRunning) {
+                    backgroundTaskManager.completeTask("전체 ${total}개 일자 중 ${count - failCount}개 요약 완료")
+                    showToast("전체 날짜 일괄 요약 분석이 완료되었습니다!", "success")
+                }
+            } catch (ce: CancellationException) {
+                AppLogger.i("TalkSummaryViewModel", "triggerBulkSummarize cancelled")
+                backgroundTaskManager.cancelTask("일괄 요약 작업이 사용자에 의해 취소되었습니다.")
             } finally {
+                InferenceForegroundService.stop(getApplication())
                 _isProcessing.value = false
-                hideLoading()
             }
         }
     }
@@ -642,9 +833,16 @@ class TalkSummaryViewModel(
         }
 
         _diagnosticLogs.value = "[연결 검사 시작] 구글 AI 서버로 테스트 통신을 보냅니다...\n\n"
-        showLoading("AI 상태 점검", "연결중...")
 
         viewModelScope.launch {
+            backgroundTaskManager.startTask(
+                taskType = TaskType.SYSTEM_DIAGNOSTIC,
+                title = "AI 서버 연결 진단",
+                detail = "AI 서버 상태 및 모델 호환성을 검사하고 있습니다...",
+                isIndeterminate = true,
+                isCancellable = true
+            )
+
             val candidateModels = listOf(
                 "gemini-2.5-flash",
                 "gemini-2.5-pro",
@@ -656,7 +854,9 @@ class TalkSummaryViewModel(
             var chosenModel = ""
 
             for (model in candidateModels) {
+                coroutineContext.ensureActive()
                 _diagnosticLogs.value += "🛰️ [테스트] $model 모델 연결중... "
+                backgroundTaskManager.updateDetail("$model 모델 연결 테스트 중...")
                 try {
                     val response = requestGemini(
                         prompt = "Hello, respond with exactly 'OK' to confirm health check.",
@@ -667,17 +867,18 @@ class TalkSummaryViewModel(
                         _diagnosticLogs.value += "➔ ✅ 연결 완료!\n"
                         success = true
                         chosenModel = model
-                        break;
+                        break
                     } else {
                         _diagnosticLogs.value += "➔ ❌ 빈 응답\n"
                     }
+                } catch (ce: CancellationException) {
+                    throw ce
                 } catch (e: Exception) {
                     _diagnosticLogs.value += "➔ 💥 에러 [${e.localizedMessage}]\n"
                 }
                 delay(500)
             }
 
-            hideLoading()
             if (success) {
                 _diagnosticLogs.value += "\n🎉 연결 성공 완료!\n이 기기 환경에 제일 적합한 [$chosenModel] 모델을 기본 AI 엔진으로 자동 지정 완료했습니다."
                 _activeModel.value = chosenModel
@@ -685,10 +886,12 @@ class TalkSummaryViewModel(
                 _useGemini.value = true
                 repository.saveSetting("use_gemini", "true")
                 updateAiState()
+                backgroundTaskManager.completeTask("AI 연결 진단 성공: $chosenModel")
                 showToast("인공지능 비서 연동 및 정상화 성공!", "success")
             } else {
                 _diagnosticLogs.value += "\n🚨 연결 실패: 구글 AI Studio에서 정식으로 발급한 유효한 키인지 확인 바랍니다."
                 _aiState.value = "키 오류"
+                backgroundTaskManager.failTask("구글 AI 연결 실패: API 키를 다시 확인해 주세요.")
                 showToast("연결 실패! 로그 확인 바랍니다.", "error")
             }
         }
@@ -727,24 +930,24 @@ class TalkSummaryViewModel(
             generationConfig = GenerationConfig(temperature = 0.5f)
         )
         try {
-            com.example.util.AppLogger.d("TalkSummaryViewModel", "Requesting Gemini with model $realModel and prompt length: ${prompt.length}")
+            AppLogger.d("TalkSummaryViewModel", "Requesting Gemini with model $realModel and prompt length: ${prompt.length}")
             val response = GeminiApiClient.service.generateContent(
                 model = realModel,
                 apiKey = apiKey,
                 request = request
             )
             val resultText = response.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
-            com.example.util.AppLogger.d("TalkSummaryViewModel", "Gemini response executed successfully.")
+            AppLogger.d("TalkSummaryViewModel", "Gemini response executed successfully.")
             _lastErrorInfo.value = null
             resultText
         } catch (e: retrofit2.HttpException) {
             val rawError = e.response()?.errorBody()?.string() ?: ""
-            com.example.util.AppLogger.e("TalkSummaryViewModel", "Gemini HTTP error ${e.code()}: $rawError")
+            AppLogger.e("TalkSummaryViewModel", "Gemini HTTP error ${e.code()}: $rawError")
             val errorInfo = com.example.data.api.GeminiErrorClassifier.classify(e.code(), rawError)
             _lastErrorInfo.value = errorInfo
             null
         } catch (e: Exception) {
-            com.example.util.AppLogger.e("TalkSummaryViewModel", "Gemini request failed: ${e.message}", e)
+            AppLogger.e("TalkSummaryViewModel", "Gemini request failed: ${e.message}", e)
             val errorInfo = com.example.data.api.GeminiErrorClassifier.classifyException(e)
             _lastErrorInfo.value = errorInfo
             null
@@ -762,16 +965,6 @@ class TalkSummaryViewModel(
                 serialized
     }
 
-    private fun showLoading(title: String, message: String) {
-        _loadingTitle.value = title
-        _loadingMessage.value = message
-        _isLoading.value = true
-    }
-
-    private fun hideLoading() {
-        _isLoading.value = false
-    }
-
     private fun setupNetworkListener() {
         val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         
@@ -785,7 +978,7 @@ class TalkSummaryViewModel(
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
 
-        connectivityManager.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
+        val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 _isOnline.value = true
             }
@@ -794,7 +987,13 @@ class TalkSummaryViewModel(
                 _isOnline.value = false
                 showToast("인터넷 연결이 해제되었습니다.", "error")
             }
-        })
+        }
+        networkCallback = callback
+        try {
+            connectivityManager.registerNetworkCallback(request, callback)
+        } catch (e: Exception) {
+            AppLogger.e("TalkSummaryViewModel", "Failed to register network callback: ${e.message}", e)
+        }
     }
 }
 
