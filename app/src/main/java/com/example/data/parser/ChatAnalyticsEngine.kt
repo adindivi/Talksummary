@@ -548,24 +548,26 @@ object ChatAnalyticsEngine {
         val laughSum = counts.kCount + counts.hCount
         val maxScore = maxOf(laughSum, counts.waveCount, counts.questionCount, counts.exclamationCount)
 
+        if (maxScore < 2) {
+            return Pair("💬 담백러", "메시지 ${counts.totalMessages}건")
+        }
+
         return when {
-            maxScore == 0 ->
-                Pair("✨ 다재다능 토커", "메시지 ${counts.totalMessages}건")
             maxScore == laughSum -> {
                 if (counts.kCount >= counts.hCount) {
-                    Pair("😂 호탕한 폭소파", "ㅋㅋㅋ ${counts.kCount}회")
+                    Pair("😂 폭소파", "ㅋㅋㅋ ${counts.kCount}회")
                 } else {
-                    Pair("😊 온화한 미소파", "ㅎㅎㅎ ${counts.hCount}회")
+                    Pair("😊 미소파", "ㅎㅎㅎ ${counts.hCount}회")
                 }
             }
             maxScore == counts.waveCount ->
-                Pair("🌊 부드러운 다정러", "말끝 물결~ ${counts.waveCount}회")
+                Pair("🌊 다정러", "~ ${counts.waveCount}회")
             maxScore == counts.questionCount ->
-                Pair("❓ 호기심 요정", "물음표? ${counts.questionCount}회")
+                Pair("❓ 호기심러", "? ${counts.questionCount}회")
             maxScore == counts.exclamationCount ->
-                Pair("🔥 열정의 에너자이저", "느낌표! ${counts.exclamationCount}회")
+                Pair("🔥 열정러", "! ${counts.exclamationCount}회")
             else ->
-                Pair("✨ 다재다능 토커", "메시지 ${counts.totalMessages}건")
+                Pair("💬 담백러", "메시지 ${counts.totalMessages}건")
         }
     }
 

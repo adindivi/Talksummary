@@ -1821,10 +1821,10 @@ private fun LinguisticQuirksSection(quirks: LinguisticQuirksReport) {
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                                 ) {
                                     Surface(
                                         color = Color(0xFFFEF3C7),
@@ -1832,18 +1832,18 @@ private fun LinguisticQuirksSection(quirks: LinguisticQuirksReport) {
                                     ) {
                                         Text(
                                             text = u.mainQuirkBadge,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
                                             color = Color(0xFF92400E),
                                             maxLines = 1,
                                             softWrap = false,
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
                                     }
                                     if (u.topExpression.isNotEmpty()) {
                                         Text(
                                             text = u.topExpression,
-                                            fontSize = 10.5.sp,
+                                            fontSize = 10.sp,
                                             color = Color(0xFF64748B),
                                             maxLines = 1,
                                             softWrap = false
