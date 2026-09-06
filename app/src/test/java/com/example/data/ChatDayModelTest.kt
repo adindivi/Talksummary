@@ -128,4 +128,82 @@ class ChatDayModelTest {
         assertEquals("심윤수", filtered[1].sender)
         assertEquals("내일 화상회의에서 뵙겠습니다!", filtered[1].text)
     }
+
+    @Test
+    fun timelineGroupingMode_enum_hasCorrectLabels() {
+        assertEquals("일별", TimelineGroupingMode.DAY.label)
+        assertEquals("월별", TimelineGroupingMode.MONTH.label)
+        assertEquals("년도별", TimelineGroupingMode.YEAR.label)
+    }
+
+    @Test
+    fun groupChatDaysByMonth_groupsCorrectlyAndAggregatesStats() {
+        val days = listOf(
+            ChatDay("2026-03-06", emptyList(), "[AI 정밀 요약]\n3월 6일 요약", listOf("약속", "홍대"), listOf("철수", "영희"), 50),
+            ChatDay("2026-03-01", emptyList(), "3월 1일 기본 요약", listOf("삼일절", "휴일"), listOf("철수"), 20),
+            ChatDay("2026-02-28", emptyList(), "[AI 정밀 요약]\n2월 28일 요약", listOf("마감", "개발"), listOf("민수", "철수"), 30),
+            ChatDay("2025-12-25", emptyList(), "크리스마스 요약", listOf("성탄절", "선물"), listOf("영희"), 40)
+        )
+
+        val monthGroups = groupChatDaysByMonth(days)
+
+        assertEquals(3, monthGroups.size)
+        
+        // 1st: 2026-03
+        val march = monthGroups[0]
+        assertEquals("2026-03", march.yearMonthKey)
+        assertEquals("2026년 03월", march.displayTitle)
+        assertEquals(2026, march.year)
+        assertEquals(3, march.month)
+        assertEquals(2, march.daysCount)
+        assertEquals(70, march.totalMessages)
+        assertEquals(1, march.summarizedDaysCount)
+        assertTrue(march.topKeywords.contains("약속"))
+        assertTrue(march.topSenders.contains("철수"))
+
+        // 2nd: 2026-02
+        val feb = monthGroups[1]
+        assertEquals("2026-02", feb.yearMonthKey)
+        assertEquals(1, feb.daysCount)
+        assertEquals(30, feb.totalMessages)
+        assertEquals(1, feb.summarizedDaysCount)
+
+        // 3rd: 2025-12
+        val dec = monthGroups[2]
+        assertEquals("2025-12", dec.yearMonthKey)
+        assertEquals(1, dec.daysCount)
+        assertEquals(40, dec.totalMessages)
+    }
+
+    @Test
+    fun groupChatDaysByYear_groupsCorrectlyAndAggregatesMonths() {
+        val days = listOf(
+            ChatDay("2026-03-06", emptyList(), "", listOf("회의"), listOf("철수"), 10),
+            ChatDay("2026-02-28", emptyList(), "", listOf("점심"), listOf("영희"), 20),
+            ChatDay("2025-12-25", emptyList(), "", listOf("연말"), listOf("민수"), 30),
+            ChatDay("2025-08-15", emptyList(), "", listOf("광복절"), listOf("철수"), 40)
+        )
+
+        val yearGroups = groupChatDaysByYear(days)
+
+        assertEquals(2, yearGroups.size)
+
+        // 2026
+        val y2026 = yearGroups[0]
+        assertEquals("2026", y2026.yearKey)
+        assertEquals("2026년", y2026.displayTitle)
+        assertEquals(2026, y2026.year)
+        assertEquals(2, y2026.daysCount)
+        assertEquals(30, y2026.totalMessages)
+        assertEquals(2, y2026.monthsCount)
+
+        // 2025
+        val y2025 = yearGroups[1]
+        assertEquals("2025", y2025.yearKey)
+        assertEquals("2025년", y2025.displayTitle)
+        assertEquals(2025, y2025.year)
+        assertEquals(2, y2025.daysCount)
+        assertEquals(70, y2025.totalMessages)
+        assertEquals(2, y2025.monthsCount)
+    }
 }

@@ -46,6 +46,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.ChatDay
 import com.example.data.Message
+import com.example.data.MonthGroupData
+import com.example.data.TimelineGroupingMode
+import com.example.data.YearGroupData
+import com.example.data.groupChatDaysByMonth
+import com.example.data.groupChatDaysByYear
 import com.example.model.GgufMetadata
 import com.example.service.TaskProgress
 import com.example.service.TaskStatus
@@ -1188,6 +1193,7 @@ fun TimelineColumn(
 
     val activeSummarizingDate by viewModel.activeSummarizingDate.collectAsStateWithLifecycle()
     val activeTask by viewModel.activeTask.collectAsStateWithLifecycle()
+    val timelineGroupingMode by viewModel.timelineGroupingMode.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier.fillMaxHeight(),
@@ -1459,46 +1465,46 @@ fun TimelineColumn(
             }
         }
 
-        // Timeline Header
+        // Galaxy Gallery One UI Style: 3-Tier Segmented Switcher [일별 | 월별 | 년도별] + Count Badge
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DateRange,
-                    contentDescription = "Timeline",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "날짜별 대화 요약",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = BrandSlate
-                )
-            }
+            GalaxySegmentedSwitcher(
+                selectedMode = timelineGroupingMode,
+                onModeSelect = { viewModel.setTimelineGroupingMode(it) }
+            )
+
             val totalMessages = chatDays.sumOf { it.msgCount }
+            val countLabel = when (timelineGroupingMode) {
+                TimelineGroupingMode.DAY -> "총 ${chatDays.size}일 (${totalMessages}건)"
+                TimelineGroupingMode.MONTH -> {
+                    val monthsCount = chatDays.map { it.date.take(7) }.distinct().size
+                    "총 ${monthsCount}개월 (${totalMessages}건)"
+                }
+                TimelineGroupingMode.YEAR -> {
+                    val yearsCount = chatDays.map { it.date.take(4) }.distinct().size
+                    "총 ${yearsCount}개년 (${totalMessages}건)"
+                }
+            }
+
             Box(
                 modifier = Modifier
-                    .background(Color(0xFFF1F5F9), RoundedCornerShape(6.dp))
-                    .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                    .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                    .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "총 ${chatDays.size}일 (${totalMessages}건)",
-                    fontSize = 10.sp,
+                    text = countLabel,
+                    fontSize = 10.5.sp,
                     color = BrandSlate,
                     fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        // Scrollable Lists of Days
+        // Scrollable Lists according to selected grouping mode
         if (chatDays.isEmpty()) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -1539,26 +1545,66 @@ fun TimelineColumn(
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(chatDays, key = { it.date }) { chatDay ->
-                    val isSummarizing = (activeSummarizingDate == chatDay.date && activeTask?.status == TaskStatus.RUNNING)
-                    TimelineItemCard(
-                        chatDay = chatDay,
-                        isSummarizing = isSummarizing,
-                        activeTask = if (isSummarizing) activeTask else null,
-                        onCancelTask = { viewModel.cancelActiveTask() },
-                        onSelect = { viewModel.selectChatDay(chatDay) },
-                        onAIPress = { viewModel.triggerSingleSummarize(chatDay) },
-                        onCopySummary = { text ->
-                            clipboardManager.setText(AnnotatedString(text))
-                            viewModel.showToast("대화 요약이 클립보드에 복사되었습니다.", "success")
+            when (timelineGroupingMode) {
+                TimelineGroupingMode.DAY -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(chatDays, key = { it.date }) { chatDay ->
+                            val isSummarizing = (activeSummarizingDate == chatDay.date && activeTask?.status == TaskStatus.RUNNING)
+                            TimelineItemCard(
+                                chatDay = chatDay,
+                                isSummarizing = isSummarizing,
+                                activeTask = if (isSummarizing) activeTask else null,
+                                onCancelTask = { viewModel.cancelActiveTask() },
+                                onSelect = { viewModel.selectChatDay(chatDay) },
+                                onAIPress = { viewModel.triggerSingleSummarize(chatDay) },
+                                onCopySummary = { text ->
+                                    clipboardManager.setText(AnnotatedString(text))
+                                    viewModel.showToast("대화 요약이 클립보드에 복사되었습니다.", "success")
+                                }
+                            )
                         }
-                    )
+                    }
+                }
+                TimelineGroupingMode.MONTH -> {
+                    val monthGroups = remember(chatDays) { groupChatDaysByMonth(chatDays) }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(monthGroups, key = { it.yearMonthKey }) { monthData ->
+                            MonthSummaryCard(
+                                monthData = monthData,
+                                onViewDays = {
+                                    viewModel.filterByYearMonth(monthData.yearMonthKey)
+                                }
+                            )
+                        }
+                    }
+                }
+                TimelineGroupingMode.YEAR -> {
+                    val yearGroups = remember(chatDays) { groupChatDaysByYear(chatDays) }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(yearGroups, key = { it.yearKey }) { yearData ->
+                            YearSummaryCard(
+                                yearData = yearData,
+                                onViewMonths = {
+                                    viewModel.filterByYear(yearData.yearKey)
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1919,6 +1965,392 @@ fun TimelineItemCard(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Galaxy Gallery (One UI) Style 3-Tier Segmented Switcher [일별 | 월별 | 년도별]
+ */
+@Composable
+fun GalaxySegmentedSwitcher(
+    selectedMode: TimelineGroupingMode,
+    onModeSelect: (TimelineGroupingMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = Color(0xFFF1F5F9),
+        border = BorderStroke(0.8.dp, Color(0xFFE2E8F0)),
+        modifier = modifier.height(34.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(2.5.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TimelineGroupingMode.values().forEach { mode ->
+                val isSelected = selectedMode == mode
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = if (isSelected) Color.White else Color.Transparent,
+                    border = if (isSelected) BorderStroke(0.8.dp, Color(0xFFCBD5E1)) else null,
+                    shadowElevation = if (isSelected) 1.dp else 0.dp,
+                    modifier = Modifier.clickable { onModeSelect(mode) }
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = mode.label,
+                            fontSize = 11.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Month Summary Card Component (Galaxy Gallery Style)
+ */
+@Composable
+fun MonthSummaryCard(
+    monthData: MonthGroupData,
+    onViewDays: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, AppleSurfaceBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onViewDays)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp)) {
+            // Header Row: Display Title + Message Count
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, Color(0xFFDBEAFE), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                    ) {
+                        Text(
+                            text = "${monthData.month}월",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1D4ED8)
+                        )
+                    }
+                    Text(
+                        text = monthData.displayTitle,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                        .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                ) {
+                    Text(
+                        text = "💬 ${monthData.daysCount}일간 (${monthData.totalMessages}건)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF475569)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Sub-status Row: AI Summary Stats & Participants
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (monthData.summarizedDaysCount > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFFFAF5FF),
+                        border = BorderStroke(0.6.dp, Color(0xFFE9D5FF))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = "AI 요약 통계",
+                                tint = Color(0xFF7C3AED),
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = "AI 요약 ${monthData.summarizedDaysCount}/${monthData.daysCount}일 완료",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7C3AED)
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "일별 AI 요약 대기 중",
+                        fontSize = 10.5.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+
+                if (monthData.topSenders.isNotEmpty()) {
+                    Text(
+                        text = "대화: ${monthData.topSenders.take(2).joinToString(", ")}",
+                        fontSize = 10.5.sp,
+                        color = Color(0xFF64748B),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Bottom Actions: Keywords + Compact Apple-Style Pill Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Scrollable horizontal Row of Keywords tags
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(end = 8.dp)
+                ) {
+                    monthData.topKeywords.take(4).forEach { keyword ->
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                                .border(0.6.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        ) {
+                            Text(
+                                text = "#$keyword",
+                                fontSize = 9.5.sp,
+                                color = Color(0xFF334155),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = onViewDays,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandSlate,
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(999.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.height(30.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = "일별 대화 보기",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "일별 보기",
+                            tint = Color.White,
+                            modifier = Modifier.size(11.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Year Summary Card Component (Galaxy Gallery Style)
+ */
+@Composable
+fun YearSummaryCard(
+    yearData: YearGroupData,
+    onViewMonths: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, AppleSurfaceBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onViewMonths)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp)) {
+            // Header Row: Display Title + Message Count
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFFEF3C7), RoundedCornerShape(8.dp))
+                            .border(0.8.dp, Color(0xFFFDE68A), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                    ) {
+                        Text(
+                            text = "타임캡슐",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFB45309)
+                        )
+                    }
+                    Text(
+                        text = yearData.displayTitle,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                        .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                ) {
+                    Text(
+                        text = "총 ${yearData.daysCount}일 (${yearData.totalMessages}건)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF475569)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Month Breakdown Chips Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                yearData.monthBreakdown.forEach { (monthName, count) ->
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(0.6.dp, Color(0xFFE2E8F0))
+                    ) {
+                        Text(
+                            text = "$monthName (${count}일)",
+                            fontSize = 10.sp,
+                            color = Color(0xFF475569),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Bottom Actions: Keywords + Compact Apple-Style Pill Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Scrollable horizontal Row of Keywords tags
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(end = 8.dp)
+                ) {
+                    yearData.topKeywords.take(4).forEach { keyword ->
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFF1F5F9), RoundedCornerShape(8.dp))
+                                .border(0.6.dp, Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        ) {
+                            Text(
+                                text = "#$keyword",
+                                fontSize = 9.5.sp,
+                                color = Color(0xFF334155),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = onViewMonths,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandSlate,
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    shape = RoundedCornerShape(999.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.height(30.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = "월별 대화 보기",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "월별 보기",
+                            tint = Color.White,
+                            modifier = Modifier.size(11.dp)
+                        )
                     }
                 }
             }

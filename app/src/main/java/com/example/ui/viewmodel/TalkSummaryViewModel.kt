@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.ChatDay
 import com.example.data.Message
+import com.example.data.TimelineGroupingMode
 import com.example.data.TalkSummaryRepository
 import com.example.data.api.GenerateContentRequest
 import com.example.data.api.GeminiApiClient
@@ -82,6 +83,10 @@ class TalkSummaryViewModel(
 
     private val _endDateFilter = MutableStateFlow("")
     val endDateFilter = _endDateFilter.asStateFlow()
+
+    // Timeline Grouping Mode (Galaxy Gallery One UI Style: Day, Month, Year)
+    private val _timelineGroupingMode = MutableStateFlow(TimelineGroupingMode.DAY)
+    val timelineGroupingMode: StateFlow<TimelineGroupingMode> = _timelineGroupingMode.asStateFlow()
 
     // Modals
     private val _showSettings = MutableStateFlow(false)
@@ -316,6 +321,24 @@ class TalkSummaryViewModel(
         _startDateFilter.value = ""
         _endDateFilter.value = ""
         showToast("모든 날짜의 대화를 다시 보여드려요.", "success")
+    }
+
+    fun setTimelineGroupingMode(mode: TimelineGroupingMode) {
+        _timelineGroupingMode.value = mode
+    }
+
+    fun filterByYearMonth(yearMonth: String) {
+        _startDateFilter.value = "$yearMonth-01"
+        _endDateFilter.value = "$yearMonth-31"
+        _timelineGroupingMode.value = TimelineGroupingMode.DAY
+        showToast("${yearMonth} 일별 대화를 보여드려요.", "info")
+    }
+
+    fun filterByYear(year: String) {
+        _startDateFilter.value = "$year-01-01"
+        _endDateFilter.value = "$year-12-31"
+        _timelineGroupingMode.value = TimelineGroupingMode.MONTH
+        showToast("${year}년 월별 대화를 보여드려요.", "info")
     }
 
     fun setMainUser(name: String) {
