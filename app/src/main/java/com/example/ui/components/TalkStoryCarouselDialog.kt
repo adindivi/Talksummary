@@ -415,7 +415,7 @@ fun TalkStoryCarouselDialog(
                         )
                         Spacer(modifier = Modifier.width(5.dp))
                         Text(
-                            text = if (currentMode == StoryCarouselMode.WEBTOON) "만화 공유" else "스토리 공유",
+                            text = if (currentMode == StoryCarouselMode.WEBTOON) "만화 이미지 공유" else "스토리 이미지 공유",
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold
                         )

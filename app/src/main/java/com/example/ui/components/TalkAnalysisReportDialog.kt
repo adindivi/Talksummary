@@ -264,7 +264,7 @@ fun TalkAnalysisReportDialog(
                                     )
                                      Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "카톡으로 분석 결과 공유하기",
+                                        "카톡으로 리포트 이미지 공유",
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = KakaoBtnDark

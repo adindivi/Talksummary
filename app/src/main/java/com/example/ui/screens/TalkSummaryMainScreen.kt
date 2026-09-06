@@ -69,11 +69,67 @@ import com.example.ui.components.TalkAnalysisReportDialog
 import com.example.ui.components.ChatArchiveListDialog
 import com.example.data.parser.ChatAnalyticsEngine
 import com.example.ui.util.AvatarColorUtils
+import com.example.ui.util.ShareImageGenerator
+import androidx.core.content.FileProvider
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import java.io.File
 import java.util.*
+
+/**
+ * KakaoTalk direct image share helper with graceful fallback to system chooser.
+ */
+private fun shareImageDirectlyToKakaoTalk(
+    context: Context,
+    imageFile: File,
+    captionText: String,
+    fallbackChooserTitle: String
+) {
+    try {
+        val imageUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+        val kakaoIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, imageUri)
+            if (captionText.isNotBlank()) {
+                putExtra(Intent.EXTRA_TEXT, captionText)
+            }
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setPackage("com.kakao.talk")
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        try {
+            context.startActivity(kakaoIntent)
+        } catch (_: Exception) {
+            val fallbackIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, imageUri)
+                if (captionText.isNotBlank()) {
+                    putExtra(Intent.EXTRA_TEXT, captionText)
+                }
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                if (context !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+            val chooser = Intent.createChooser(fallbackIntent, fallbackChooserTitle).apply {
+                if (context !is android.app.Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            }
+            context.startActivity(chooser)
+        }
+    } catch (_: Exception) {
+        // Fallback to text share if image URI generation fails
+        shareDirectlyToKakaoTalk(context, captionText, fallbackChooserTitle)
+    }
+}
 
 /**
  * KakaoTalk direct share helper with graceful fallback to system chooser.
@@ -1133,24 +1189,37 @@ fun TalkSummaryMainScreen(
                 activeModel = activeModel,
                 onDismiss = { activeStoryChatDay = null },
                 onShareStory = { story ->
-                    val shareText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n\n" +
-                        "1장: ${story.card1.title}\n${story.card1.story}\n\n" +
-                        "2장: ${story.card2.title}\n${story.card2.story}\n\n" +
-                        "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
-                        "#카카오톡대화요약 #스토리카드"
-                    shareDirectlyToKakaoTalk(context, shareText, "3장 스토리 카톡 공유")
+                    try {
+                        val imageFile = ShareImageGenerator.generateStoryCardsImage(context, story)
+                        val captionText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n#카카오톡대화요약 #스토리카드"
+                        shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "3장 스토리 이미지 카톡 공유")
+                    } catch (_: Exception) {
+                        val shareText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n\n" +
+                            "1장: ${story.card1.title}\n${story.card1.story}\n\n" +
+                            "2장: ${story.card2.title}\n${story.card2.story}\n\n" +
+                            "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
+                            "#카카오톡대화요약 #스토리카드"
+                        shareDirectlyToKakaoTalk(context, shareText, "3장 스토리 카톡 공유")
+                    }
                 },
                 onShareWebtoon = { webtoon ->
-                    val cutsText = webtoon.cuts.joinToString("\n\n") { cut ->
-                        "${cut.stage}: \"${cut.speechBubble}\" (${cut.speaker} ${cut.emotionEmoji})\n" +
-                        "💥 효과음: ${cut.soundEffect}\n" +
-                        "📖 ${cut.situation}"
+                    try {
+                        val imageFile = ShareImageGenerator.generateWebtoonStripImage(context, webtoon)
+                        val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
+                        val captionText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n#카카오톡대화요약 #3컷웹툰 #인스타툰"
+                        shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "3컷 웹툰 이미지 카톡 공유")
+                    } catch (_: Exception) {
+                        val cutsText = webtoon.cuts.joinToString("\n\n") { cut ->
+                            "${cut.stage}: \"${cut.speechBubble}\" (${cut.speaker} ${cut.emotionEmoji})\n" +
+                            "💥 효과음: ${cut.soundEffect}\n" +
+                            "📖 ${cut.situation}"
+                        }
+                        val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
+                        val shareText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n\n" +
+                            "$cutsText\n\n" +
+                            "#카카오톡대화요약 #3컷웹툰 #인스타툰"
+                        shareDirectlyToKakaoTalk(context, shareText, "3컷 웹툰 카톡 공유")
                     }
-                    val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
-                    val shareText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n\n" +
-                        "$cutsText\n\n" +
-                        "#카카오톡대화요약 #3컷웹툰 #인스타툰"
-                    shareDirectlyToKakaoTalk(context, shareText, "3컷 웹툰 카톡 공유")
                 }
             )
         }
@@ -1165,46 +1234,52 @@ fun TalkSummaryMainScreen(
                     analysisInitialYearMonth = null
                 },
                 onShareReport = { report ->
-                    val podiumText = if (report.participantShares.isNotEmpty()) {
-                        report.participantShares.take(3).joinToString("\n") { share ->
-                            val icon = when (share.rank) {
-                                1 -> "🥇"
-                                2 -> "🥈"
-                                3 -> "🥉"
-                                else -> "⚡"
+                    try {
+                        val imageFile = ShareImageGenerator.generateAnalysisReportImage(context, report)
+                        val captionText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n#카카오톡대화분석 #토크서머리"
+                        shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "카톡 대화 분석 리포트 이미지 공유")
+                    } catch (_: Exception) {
+                        val podiumText = if (report.participantShares.isNotEmpty()) {
+                            report.participantShares.take(3).joinToString("\n") { share ->
+                                val icon = when (share.rank) {
+                                    1 -> "🥇"
+                                    2 -> "🥈"
+                                    3 -> "🥉"
+                                    else -> "⚡"
+                                }
+                                "$icon ${share.name} (${share.count}건, ${share.percentage}%) - ${share.badge}"
                             }
-                            "$icon ${share.name} (${share.count}건, ${share.percentage}%) - ${share.badge}"
-                        }
-                    } else "참여자 데이터 없음"
+                        } else "참여자 데이터 없음"
 
-                    val peakText = report.peakDay?.let {
-                        "🔥 가장 뜨거웠던 날: ${it.displayDate} (${it.messageCount}건, ${it.percentageOfTotal}%)\n"
-                    } ?: ""
+                        val peakText = report.peakDay?.let {
+                            "🔥 가장 뜨거웠던 날: ${it.displayDate} (${it.messageCount}건, ${it.percentageOfTotal}%)\n"
+                        } ?: ""
 
-                    val pingText = report.firstPingStats?.leaders?.firstOrNull()?.let { leader ->
-                        "⚡ 선톡 장인: ${leader.name} (${leader.pingCount}회, ${leader.pingPercentage}%)\n"
-                    } ?: ""
+                        val pingText = report.firstPingStats?.leaders?.firstOrNull()?.let { leader ->
+                            "⚡ 선톡 장인: ${leader.name} (${leader.pingCount}회, ${leader.pingPercentage}%)\n"
+                        } ?: ""
 
-                    val quirksText = report.quirksReport?.let { q ->
-                        "😂 웃음 타입: ${q.dominantLaughType} (총 ${q.totalLaughCount}회)\n"
-                    } ?: ""
+                        val quirksText = report.quirksReport?.let { q ->
+                            "😂 웃음 타입: ${q.dominantLaughType} (총 ${q.totalLaughCount}회)\n"
+                        } ?: ""
 
-                    val heatmapText = report.heatmapData?.let { h ->
-                        "🟩 대화 잔디: ${h.totalDaysInMonth}일 중 ${h.activeDaysCount}일 대화 (${h.activeDayPercentage}% 출석)\n"
-                    } ?: ""
+                        val heatmapText = report.heatmapData?.let { h ->
+                            "🟩 대화 잔디: ${h.totalDaysInMonth}일 중 ${h.activeDaysCount}일 대화 (${h.activeDayPercentage}% 출석)\n"
+                        } ?: ""
 
-                    val shareText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n\n" +
-                        "총 ${report.daysCount}일간 ${report.totalMessages}건의 대화 분석 결과\n\n" +
-                        "🏆 이 달의 발언 랭킹:\n$podiumText\n\n" +
-                        peakText + "\n" +
-                        pingText +
-                        quirksText +
-                        heatmapText + "\n" +
-                        "⏰ 대화 골든타임:\n${report.timeSlotStats.personaTitle}\n${report.timeSlotStats.personaDescription}\n\n" +
-                        "💫 우리들의 케미:\n${report.chemistryTitle}\n${report.chemistryDescription}\n\n" +
-                        "#카카오톡대화분석 #토크서머리"
+                        val shareText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n\n" +
+                            "총 ${report.daysCount}일간 ${report.totalMessages}건의 대화 분석 결과\n\n" +
+                            "🏆 이 달의 발언 랭킹:\n$podiumText\n\n" +
+                            peakText + "\n" +
+                            pingText +
+                            quirksText +
+                            heatmapText + "\n" +
+                            "⏰ 대화 골든타임:\n${report.timeSlotStats.personaTitle}\n${report.timeSlotStats.personaDescription}\n\n" +
+                            "💫 우리들의 케미:\n${report.chemistryTitle}\n${report.chemistryDescription}\n\n" +
+                            "#카카오톡대화분석 #토크서머리"
 
-                    shareDirectlyToKakaoTalk(context, shareText, "카톡 대화 분석 리포트 공유")
+                        shareDirectlyToKakaoTalk(context, shareText, "카톡 대화 분석 리포트 공유")
+                    }
                 }
             )
         }
