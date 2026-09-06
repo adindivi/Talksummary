@@ -93,13 +93,15 @@ private fun showDatePickerDialog(
     ).show()
 }
 
-// Brand Visual Tokens
+// Brand & Apple Design Visual Tokens
 val KakaoYellow = Color(0xFFFEE500)
 val KakaoTextDark = Color(0xFF3C1E1E)
 val KakaoChatBg = Color(0xFFBACDDE)
 val KakaoHeaderBg = Color(0xFFA9BDCE)
 val BrandSlate = Color(0xFF334155)
 val BrandGreenAccent = Color(0xFF10B981)
+val AppleFogCanvas = Color(0xFFF5F5F7)
+val AppleSurfaceBorder = Color(0xFFE5E5EA)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,7 +211,8 @@ fun TalkSummaryMainScreen(
 
                 Surface(
                     color = Color.White,
-                    shadowElevation = 1.5.dp,
+                    shadowElevation = 0.dp,
+                    border = BorderStroke(0.8.dp, AppleSurfaceBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -312,7 +315,7 @@ fun TalkSummaryMainScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .background(Color(0xFFF8FAFC))
+                .background(AppleFogCanvas)
         ) {
             val isDualPane = (maxWidth >= 720.dp && maxHeight >= 480.dp) || maxWidth >= 960.dp
             val timelineWeight = if (maxWidth > 1000.dp) 0.38f else 0.45f
@@ -850,7 +853,7 @@ fun TimelineColumn(
             }
         }
 
-        // Upload Buttons Zone
+        // Upload Buttons Zone (Apple Signature 44dp Pill Buttons: Filled Primary + Outline Secondary)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -858,9 +861,10 @@ fun TimelineColumn(
             Button(
                 onClick = onImportFileClick,
                 colors = ButtonDefaults.buttonColors(containerColor = KakaoYellow),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                shape = RoundedCornerShape(999.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2D800).copy(alpha = 0.7f)),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                 modifier = Modifier
                     .weight(1f)
                     .height(44.dp)
@@ -878,8 +882,8 @@ fun TimelineColumn(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         "대화 파일 열기",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
                         color = KakaoTextDark,
                         maxLines = 1,
                         softWrap = false
@@ -889,10 +893,14 @@ fun TimelineColumn(
 
             Button(
                 onClick = onPasteTextClick,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = BrandSlate
+                ),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                shape = RoundedCornerShape(999.dp),
                 border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
                 modifier = Modifier
                     .weight(1f)
                     .height(44.dp)
@@ -910,8 +918,8 @@ fun TimelineColumn(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         "대화 붙여넣기",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
                         color = BrandSlate,
                         maxLines = 1,
                         softWrap = false
@@ -920,13 +928,14 @@ fun TimelineColumn(
             }
         }
 
-        // Dates Filters Block (Compact Single-Row Design)
+        // Dates Filters Block (Flat Surface on Fog Canvas, 0dp Elevation)
         if (allChatDays.isNotEmpty()) {
             val isFilterActive = startText.isNotEmpty() || endText.isNotEmpty()
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, if (isFilterActive) Color(0xFFBFDBFE) else Color(0xFFE2E8F0)),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, if (isFilterActive) Color(0xFFBFDBFE) else AppleSurfaceBorder),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1170,7 +1179,8 @@ fun TimelineItemCard(
             containerColor = if (isAISummarized) Color(0xFFFAF8FF) else Color.White
         ),
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, if (isAISummarized) Color(0xFFE9D5FF) else Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, if (isAISummarized) Color(0xFFE9D5FF) else AppleSurfaceBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onSelect)
@@ -1318,10 +1328,11 @@ fun TimelineItemCard(
                         containerColor = if (isAISummarized) Color(0xFFF1F5F9) else BrandSlate,
                         contentColor = if (isAISummarized) BrandSlate else Color.White
                     ),
-                    contentPadding = PaddingValues(horizontal = 9.dp, vertical = 0.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                     shape = RoundedCornerShape(999.dp),
                     border = if (isAISummarized) BorderStroke(1.dp, Color(0xFFCBD5E1)) else null,
-                    modifier = Modifier.height(28.dp)
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.height(30.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
