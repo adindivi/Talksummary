@@ -63,6 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.data.parser.StoryGenerator
 import com.example.model.TalkStoryResult
+import com.example.model.WebtoonStoryResult
 import com.example.ui.components.TalkStoryCarouselDialog
 import com.example.ui.components.TalkAnalysisReportDialog
 import com.example.data.parser.ChatAnalyticsEngine
@@ -1060,11 +1061,14 @@ fun TalkSummaryMainScreen(
             )
         }
 
-        // 3-Card Instagram-style Cinematic Story Dialog
+        // 3-Card Instagram-style Cinematic Story Dialog & 3-Cut AI Webtoon
         activeStoryChatDay?.let { chatDay ->
             val storyResult = remember(chatDay) { StoryGenerator.generate3CardStory(chatDay) }
             TalkStoryCarouselDialog(
                 storyResult = storyResult,
+                chatDay = chatDay,
+                geminiApiKey = geminiApiKey,
+                activeModel = activeModel,
                 onDismiss = { activeStoryChatDay = null },
                 onShareStory = { story ->
                     val shareText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n\n" +
@@ -1073,6 +1077,18 @@ fun TalkSummaryMainScreen(
                         "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
                         "#카카오톡대화요약 #스토리카드"
                     shareDirectlyToKakaoTalk(context, shareText, "3장 스토리 카톡 공유")
+                },
+                onShareWebtoon = { webtoon ->
+                    val cutsText = webtoon.cuts.joinToString("\n\n") { cut ->
+                        "${cut.stage}: \"${cut.speechBubble}\" (${cut.speaker} ${cut.emotionEmoji})\n" +
+                        "💥 효과음: ${cut.soundEffect}\n" +
+                        "📖 ${cut.situation}"
+                    }
+                    val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
+                    val shareText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n\n" +
+                        "$cutsText\n\n" +
+                        "#카카오톡대화요약 #3컷웹툰 #인스타툰"
+                    shareDirectlyToKakaoTalk(context, shareText, "3컷 웹툰 카톡 공유")
                 }
             )
         }
