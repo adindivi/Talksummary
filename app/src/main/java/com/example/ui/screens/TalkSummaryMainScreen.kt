@@ -2063,10 +2063,10 @@ fun GalaxySegmentedSwitcher(
         shape = RoundedCornerShape(999.dp),
         color = Color(0xFFF1F5F9),
         border = BorderStroke(0.8.dp, Color(0xFFE2E8F0)),
-        modifier = modifier.height(28.dp)
+        modifier = modifier.height(31.dp)
     ) {
         Row(
-            modifier = Modifier.padding(2.dp),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.5.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -2081,8 +2081,8 @@ fun GalaxySegmentedSwitcher(
                 ) {
                     Box(
                         modifier = Modifier
-                            .widthIn(min = 48.dp)
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                            .widthIn(min = 52.dp)
+                            .padding(horizontal = 6.dp, vertical = 2.5.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -3265,34 +3265,50 @@ fun SettingsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 val models = listOf(
-                                    "gemini-2.5-flash" to "2.5 Flash (추천)",
-                                    "gemini-2.5-pro" to "2.5 Pro",
-                                    "gemini-3.5-flash" to "3.5 Flash",
-                                    "gemini-3.1-pro-preview" to "3.1 Pro",
-                                    "gemini-3.1-flash-lite-preview" to "Lite"
+                                    Triple("gemini-2.5-flash", "2.5 Flash", true),
+                                    Triple("gemini-2.5-pro", "2.5 Pro", false),
+                                    Triple("gemini-3.5-flash", "3.5 Flash", false),
+                                    Triple("gemini-3.1-pro-preview", "3.1 Pro", false),
+                                    Triple("gemini-3.1-flash-lite-preview", "Lite", false)
                                 )
-                                models.forEach { (modelId, displayName) ->
+                                models.forEach { (modelId, displayName, isRecommended) ->
                                     val isSelected = selectedModel == modelId
-                                    Box(
-                                        modifier = Modifier
-                                            .background(
-                                                color = if (isSelected) KakaoYellow else Color(0xFFF1F5F9),
-                                                shape = RoundedCornerShape(10.dp)
-                                            )
-                                            .border(
-                                                width = 1.dp,
-                                                color = if (isSelected) KakaoTextDark else Color(0xFFE2E8F0),
-                                                shape = RoundedCornerShape(10.dp)
-                                            )
-                                            .clickable { selectedModel = modelId }
-                                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                                    Surface(
+                                        shape = RoundedCornerShape(999.dp),
+                                        color = if (isSelected) Color(0xFFFEF3C7) else Color(0xFFF1F5F9),
+                                        border = BorderStroke(
+                                            width = if (isSelected) 1.2.dp else 0.8.dp,
+                                            color = if (isSelected) Color(0xFFF59E0B) else Color(0xFFE2E8F0)
+                                        ),
+                                        shadowElevation = if (isSelected) 0.5.dp else 0.dp,
+                                        modifier = Modifier.clickable { selectedModel = modelId }
                                     ) {
-                                        Text(
-                                            text = displayName,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isSelected) KakaoTextDark else Color.DarkGray
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = displayName,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) Color(0xFF78350F) else Color(0xFF334155)
+                                            )
+                                            if (isRecommended) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(Color(0xFF4F46E5), RoundedCornerShape(999.dp))
+                                                        .padding(horizontal = 5.dp, vertical = 1.2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "추천",
+                                                        fontSize = 8.5.sp,
+                                                        color = Color.White,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -3359,21 +3375,27 @@ fun SettingsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "🔒 소중한 대화와 키는 안전하게 보호돼요",
+                                    text = "🔒 대화와 키는 안전하게 보호돼요",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = BrandSlate
+                                    color = BrandSlate,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "자세히 보기 >",
+                                    text = "자세히 >",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF4F46E5)
+                                    color = Color(0xFF4F46E5),
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = "대화 내용과 API 키는 외부 서버로 유출되지 않고 오직 내 폰 안에만 안전하게 머물러요. 안심하고 사용하세요.",
+                                text = "대화와 API 키는 외부 서버로 전송되지 않고 오직 내 스마트폰 안에만 안전하게 암호화되어 보관돼요.",
                                 fontSize = 9.5.sp,
                                 color = Color(0xFF64748B),
                                 lineHeight = 14.5.sp
@@ -3396,39 +3418,63 @@ fun SettingsDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Button(
-                                onClick = { onRunDiagnostic(keyText) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2F6)),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp),
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = Color(0xFFEEF2FF),
+                                border = BorderStroke(0.8.dp, Color(0xFFC7D2FE)),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp)
+                                    .height(34.dp)
+                                    .clickable { onRunDiagnostic(keyText) }
                             ) {
                                 Row(
+                                    modifier = Modifier.fillMaxSize(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Test Connection", tint = Color(0xFF4F46E5), modifier = Modifier.size(14.dp))
-                                    Text("AI 연결 테스트", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4F46E5))
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = "Test Connection",
+                                        tint = Color(0xFF4F46E5),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = "AI 연결 테스트",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF4F46E5)
+                                    )
                                 }
                             }
 
-                            Button(
-                                onClick = onRunSystemCheck,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp),
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = Color(0xFFF1F5F9),
+                                border = BorderStroke(0.8.dp, Color(0xFFE2E8F0)),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp)
+                                    .height(34.dp)
+                                    .clickable { onRunSystemCheck() }
                             ) {
                                 Row(
+                                    modifier = Modifier.fillMaxSize(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = "System check", tint = BrandSlate, modifier = Modifier.size(14.dp))
-                                    Text("시스템 상태 점검", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BrandSlate)
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "System check",
+                                        tint = BrandSlate,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = "시스템 상태 점검",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BrandSlate
+                                    )
                                 }
                             }
                         }
