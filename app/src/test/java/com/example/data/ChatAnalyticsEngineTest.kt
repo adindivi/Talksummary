@@ -1,6 +1,7 @@
 package com.example.data
 
 import com.example.data.parser.ChatAnalyticsEngine
+import com.example.model.*
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -308,6 +309,71 @@ class ChatAnalyticsEngineTest {
     }
 
     @Test
+    fun testCalculateStockChartScrubbingData() {
+        // Given: March 2026 (31 days), Day 18 has 3 messages at 20:15, 20:30, 21:00
+        val day18 = ChatDay(
+            date = "2026-03-18",
+            messages = listOf(
+                Message("철수", "오후 8:15", "오늘 회식 몇 시인가요?"),
+                Message("영희", "오후 8:30", "삼겹살집 9시 예약이요!"),
+                Message("민수", "오후 9:00", "지금 출발합니다~~")
+            ),
+            summary = "회식 일정 조율",
+            keywords = listOf("회식", "삼겹살"),
+            participants = listOf("철수", "영희", "민수"),
+            msgCount = 3
+        )
+
+        val peakDay = PeakDayData(
+            date = "2026-03-18",
+            displayDate = "3월 18일 (수)",
+            messageCount = 3,
+            percentageOfTotal = 100,
+            peakKeywords = listOf("회식")
+        )
+
+        // When
+        val data = ChatAnalyticsEngine.calculateStockChartScrubbingData(
+            year = 2026,
+            month = 3,
+            days = listOf(day18),
+            avgDailyMessages = 1,
+            peakDay = peakDay
+        )
+
+        // Then: 31 points in March
+        assertEquals(31, data.points.size)
+        assertEquals(1, data.avgDailyCount)
+        assertEquals(3, data.maxDayCount)
+        assertNotNull(data.peakPoint)
+        assertEquals(18, data.peakPoint?.dayOfMonth)
+
+        val p18 = data.points[17] // Day 18
+        assertEquals(18, p18.dayOfMonth)
+        assertEquals("2026-03-18", p18.dateStr)
+        assertEquals(3, p18.messageCount)
+        assertTrue(p18.isPeakDay)
+        assertTrue(p18.trendLabel.contains("피크") || p18.trendLabel.contains("급등"))
+        assertEquals(listOf("회식", "삼겹살"), p18.keywords)
+
+        // Check 24-hour distribution for Day 18 (Hour 20 had 2 messages, Hour 21 had 1 message)
+        assertEquals(24, p18.hourlyCounts.size)
+        assertEquals(2, p18.hourlyCounts[20])
+        assertEquals(1, p18.hourlyCounts[21])
+        assertEquals(0, p18.hourlyCounts[0])
+        assertEquals(20, p18.peakHour)
+        assertEquals(2, p18.peakHourCount)
+
+        // Day 1 (empty)
+        val p1 = data.points[0]
+        assertEquals(1, p1.dayOfMonth)
+        assertEquals(0, p1.messageCount)
+        assertFalse(p1.isPeakDay)
+        assertEquals(24, p1.hourlyCounts.size)
+        assertEquals(0, p1.hourlyCounts[12])
+    }
+
+    @Test
     fun testAnalyzeMonth_IncludesAllNewCreativeFeatures() {
         val messages = listOf(
             Message("철수", "09:00", "시작합니다 ㅋㅋㅋ"),
@@ -320,7 +386,10 @@ class ChatAnalyticsEngineTest {
         assertNotNull("firstPingStats should not be null", report.firstPingStats)
         assertNotNull("quirksReport should not be null", report.quirksReport)
         assertNotNull("heatmapData should not be null", report.heatmapData)
+        assertNotNull("stockScrubbingData should not be null", report.stockScrubbingData)
         assertEquals(31, report.heatmapData?.totalDaysInMonth)
         assertEquals(1, report.heatmapData?.activeDaysCount)
+        assertEquals(31, report.stockScrubbingData?.points?.size)
     }
 }
+

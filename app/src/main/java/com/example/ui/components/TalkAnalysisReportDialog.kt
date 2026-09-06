@@ -6,7 +6,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
@@ -28,9 +31,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -219,9 +229,13 @@ fun TalkAnalysisReportDialog(
                         // 1. 발언 지분율 & 랭킹 카드
                         ParticipantRankSection(participantShares = report.participantShares)
 
-                        // 2. 가장 뜨거웠던 날 (피크 데이) 카드
-                        report.peakDay?.let { peak ->
-                            PeakDaySection(peakDay = peak, avgDaily = report.avgDailyMessages)
+                        // 2. 주식 차트형 인터랙션: 월간 대화량 파동 & 24시간 체결량 (기능 1 & 4)
+                        if (report.stockScrubbingData != null && report.stockScrubbingData.points.isNotEmpty()) {
+                            TalkVolumeWaveSection(stockData = report.stockScrubbingData)
+                        } else {
+                            report.peakDay?.let { peak ->
+                                PeakDaySection(peakDay = peak, avgDaily = report.avgDailyMessages)
+                            }
                         }
 
                         // 3. 대화 골든타임 & 페르소나 카드
@@ -800,6 +814,502 @@ private fun PeakDaySection(peakDay: PeakDayData, avgDaily: Int) {
         }
     }
 }
+
+/**
+ * 주식 차트형 인터랙션:
+ * 1번. 월간 대화량 스크러빙 곡선 (Talk Volume Wave)
+ * 4번. 선택한 날의 24시간 타임 체결량 슬라이더 (24-Hour Intraday Volume)
+ */
+@Composable
+private fun TalkVolumeWaveSection(stockData: StockChartScrubbingData) {
+    val points = stockData.points
+    if (points.isEmpty()) return
+
+    val peakIndex = remember(points) {
+        val idx = points.indexOfFirst { it.isPeakDay }
+        if (idx >= 0) idx else (points.indices.maxByOrNull { points[it].messageCount } ?: 0)
+    }
+
+    var selectedDayIndex by rememberSaveable(points.size, stockData.peakPoint?.dateStr) {
+        mutableStateOf(peakIndex)
+    }
+
+    val safeIndex = selectedDayIndex.coerceIn(0, points.size - 1)
+    val currentPoint = points[safeIndex]
+
+    val haptic = LocalHapticFeedback.current
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F9FF)),
+        border = BorderStroke(1.dp, Color(0xFFBAE6FD)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header: Title & Badges
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("📈", fontSize = 15.sp)
+                    Text(
+                        "월간 대화량 파동 & 24h 체결량",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0369A1)
+                    )
+                }
+
+                Surface(
+                    color = Color(0xFFE0F2FE),
+                    shape = RoundedCornerShape(999.dp)
+                ) {
+                    Text(
+                        text = "실시간 스크러빙",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0284C7),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = "손가락으로 곡선을 쓸어 넘기며 일자별 대화 흐름을 확인해보세요",
+                fontSize = 11.sp,
+                color = Color(0xFF0284C7).copy(alpha = 0.85f),
+                modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+            )
+
+            // Dynamic Values Header (Real-time update on scrubbing)
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(0.8.dp, Color(0xFFE0F2FE)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentPoint.displayDate,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF0C4A6E)
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "${currentPoint.messageCount}건",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF0284C7)
+                            )
+
+                            // Trend badge
+                            val (badgeBg, badgeText) = when {
+                                currentPoint.isPeakDay -> Pair(Color(0xFFFFEDD5), Color(0xFFC2410C))
+                                currentPoint.percentVsAvg >= 50 -> Pair(Color(0xFFFFEDD5), Color(0xFFC2410C))
+                                currentPoint.percentVsAvg >= 10 -> Pair(Color(0xFFDCFCE7), Color(0xFF15803D))
+                                currentPoint.messageCount > 0 -> Pair(Color(0xFFF1F5F9), Color(0xFF475569))
+                                else -> Pair(Color(0xFFF8FAFC), Color(0xFF94A3B8))
+                            }
+
+                            Surface(
+                                color = badgeBg,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = currentPoint.trendLabel,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = badgeText,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Key topics for this day if available
+                    if (currentPoint.keywords.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "주요 키워드:",
+                                fontSize = 10.5.sp,
+                                color = Color(0xFF64748B),
+                                fontWeight = FontWeight.Medium
+                            )
+                            currentPoint.keywords.take(3).forEach { kw ->
+                                Surface(
+                                    color = Color(0xFFE0F2FE),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "#$kw",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF0284C7),
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 1번. Bézier Spline Wave Canvas with Touch & Drag Scrubbing
+            val nPoints = points.size
+            val maxCount = maxOf(stockData.maxDayCount, stockData.avgDailyCount, 1)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(125.dp)
+            ) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(nPoints) {
+                            detectTapGestures { offset ->
+                                val availableWidth = size.width - 24.dp.toPx()
+                                val startX = 12.dp.toPx()
+                                val fraction = ((offset.x - startX) / availableWidth).coerceIn(0f, 1f)
+                                val newIndex = (fraction * (nPoints - 1)).roundToInt().coerceIn(0, nPoints - 1)
+                                if (newIndex != selectedDayIndex) {
+                                    selectedDayIndex = newIndex
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        }
+                        .pointerInput(nPoints) {
+                            detectDragGestures { change, _ ->
+                                change.consume()
+                                val availableWidth = size.width - 24.dp.toPx()
+                                val startX = 12.dp.toPx()
+                                val fraction = ((change.position.x - startX) / availableWidth).coerceIn(0f, 1f)
+                                val newIndex = (fraction * (nPoints - 1)).roundToInt().coerceIn(0, nPoints - 1)
+                                if (newIndex != selectedDayIndex) {
+                                    selectedDayIndex = newIndex
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        }
+                ) {
+                    val w = size.width
+                    val h = size.height
+
+                    val startX = 12.dp.toPx()
+                    val endX = w - 12.dp.toPx()
+                    val availableW = endX - startX
+
+                    val chartTop = 14.dp.toPx()
+                    val chartBottom = h - 14.dp.toPx()
+                    val chartH = chartBottom - chartTop
+
+                    fun getPointCoords(i: Int): Offset {
+                        val px = if (nPoints > 1) startX + (i.toFloat() / (nPoints - 1)) * availableW else startX + availableW / 2f
+                        val py = chartBottom - (points[i].messageCount.toFloat() / maxCount) * chartH
+                        return Offset(px, py)
+                    }
+
+                    // 1. Average dashed horizontal guide line
+                    if (stockData.avgDailyCount > 0) {
+                        val avgY = chartBottom - (stockData.avgDailyCount.toFloat() / maxCount) * chartH
+                        drawLine(
+                            color = Color(0xFF94A3B8).copy(alpha = 0.45f),
+                            start = Offset(startX, avgY),
+                            end = Offset(endX, avgY),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
+                        )
+                    }
+
+                    // 2. Build smooth Bézier spline path
+                    val splinePath = Path()
+                    val firstPt = getPointCoords(0)
+                    splinePath.moveTo(firstPt.x, firstPt.y)
+
+                    for (i in 0 until nPoints - 1) {
+                        val p0 = getPointCoords(i)
+                        val p1 = getPointCoords(i + 1)
+                        val midX = (p0.x + p1.x) / 2f
+                        splinePath.cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
+                    }
+
+                    // 3. Fill area under the spline curve with soft gradient
+                    val fillPath = Path().apply {
+                        addPath(splinePath)
+                        val lastPt = getPointCoords(nPoints - 1)
+                        lineTo(lastPt.x, chartBottom)
+                        lineTo(firstPt.x, chartBottom)
+                        close()
+                    }
+                    drawPath(
+                        path = fillPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF38BDF8).copy(alpha = 0.35f),
+                                Color(0xFF38BDF8).copy(alpha = 0.03f)
+                            ),
+                            startY = chartTop,
+                            endY = chartBottom
+                        )
+                    )
+
+                    // 4. Stroke the spline curve line
+                    drawPath(
+                        path = splinePath,
+                        color = Color(0xFF0284C7),
+                        style = Stroke(
+                            width = 2.5.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                    )
+
+                    // 5. Highlight Peak Day point if exists
+                    val peakPt = getPointCoords(peakIndex)
+                    drawCircle(
+                        color = Color(0xFFEA580C),
+                        radius = 4.dp.toPx(),
+                        center = peakPt
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = 1.8.dp.toPx(),
+                        center = peakPt
+                    )
+
+                    // 6. Scrubbing Active Indicator Line and Glowing Dot
+                    val activePt = getPointCoords(safeIndex)
+
+                    // Vertical dashed indicator line (Toss stock style)
+                    drawLine(
+                        color = Color(0xFF0284C7).copy(alpha = 0.65f),
+                        start = Offset(activePt.x, chartTop),
+                        end = Offset(activePt.x, chartBottom),
+                        strokeWidth = 1.5.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))
+                    )
+
+                    // Glowing ripple circles on current active dot
+                    drawCircle(
+                        color = Color(0xFF0284C7).copy(alpha = 0.22f),
+                        radius = 8.5.dp.toPx(),
+                        center = activePt
+                    )
+                    drawCircle(
+                        color = Color(0xFF0284C7),
+                        radius = 5.dp.toPx(),
+                        center = activePt
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = 2.2.dp.toPx(),
+                        center = activePt
+                    )
+                }
+            }
+
+            // X-Axis Date Ticks
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val tickDays = listOf(1, 5, 10, 15, 20, 25, points.size).distinct()
+                tickDays.forEach { d ->
+                    Text(
+                        text = "${d}일",
+                        fontSize = 9.5.sp,
+                        color = if (d == currentPoint.dayOfMonth) Color(0xFF0284C7) else Color(0xFF94A3B8),
+                        fontWeight = if (d == currentPoint.dayOfMonth) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFBAE6FD).copy(alpha = 0.6f), thickness = 0.8.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 4번. 선택한 날의 24시간 체결량 슬라이더 (24-Hour Intraday Volume Histogram)
+            var hoveredHour by rememberSaveable(safeIndex) { mutableStateOf<Int?>(null) }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("⏰", fontSize = 13.sp)
+                    Text(
+                        text = "${currentPoint.dayOfMonth}일 24시간 체결량",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0369A1)
+                    )
+                }
+
+                if (currentPoint.peakHour != null && currentPoint.peakHourCount > 0) {
+                    Surface(
+                        color = Color(0xFFFFEDD5),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "🔥 피크: ${currentPoint.peakHour}시 (${currentPoint.peakHourCount}건)",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFC2410C),
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "대화 기록 없음",
+                        fontSize = 10.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Hovered Tooltip Bar / Helper text
+            val safeHover = hoveredHour
+            if (safeHover != null && safeHover in 0..23) {
+                val hourCount = currentPoint.hourlyCounts[safeHover]
+                val hourPct = if (currentPoint.messageCount > 0) {
+                    ((hourCount.toFloat() / currentPoint.messageCount) * 100f).roundToInt()
+                } else 0
+
+                Surface(
+                    color = Color(0xFFE0F2FE),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "📍 ${safeHover}시 ~ ${safeHover + 1}시: ${hourCount}건 체결 (${hourPct}%)",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0284C7),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 3.dp)
+                    )
+                }
+            } else {
+                Text(
+                    text = "👆 24시간 바를 터치하면 시간대별 상세 체결 건수를 확인할 수 있어요",
+                    fontSize = 10.sp,
+                    color = Color(0xFF64748B),
+                    modifier = Modifier.padding(vertical = 2.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // 24 Hourly Volume Bars Canvas
+            val maxHourCount = currentPoint.hourlyCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            ) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(safeIndex) {
+                            detectTapGestures { offset ->
+                                val barSlot = size.width / 24f
+                                val h = (offset.x / barSlot).toInt().coerceIn(0, 23)
+                                hoveredHour = h
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
+                        }
+                        .pointerInput(safeIndex) {
+                            detectDragGestures { change, _ ->
+                                change.consume()
+                                val barSlot = size.width / 24f
+                                val h = (change.position.x / barSlot).toInt().coerceIn(0, 23)
+                                if (h != hoveredHour) {
+                                    hoveredHour = h
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        }
+                ) {
+                    val w = size.width
+                    val h = size.height
+                    val barWidth = (w / 24f) * 0.7f
+                    val slotWidth = w / 24f
+
+                    for (hour in 0..23) {
+                        val count = currentPoint.hourlyCounts[hour]
+                        val ratio = if (currentPoint.messageCount > 0) {
+                            (count.toFloat() / maxHourCount).coerceIn(0.08f, 1f)
+                        } else 0.08f
+
+                        val barHeight = h * ratio
+                        val barLeft = hour * slotWidth + (slotWidth - barWidth) / 2f
+                        val barTop = h - barHeight
+
+                        val barColor = when {
+                            hour == hoveredHour -> Color(0xFF0284C7)
+                            hour == currentPoint.peakHour && count > 0 -> Color(0xFFF97316)
+                            count > 0 -> Color(0xFF38BDF8)
+                            else -> Color(0xFFE2E8F0)
+                        }
+
+                        drawRoundRect(
+                            color = barColor,
+                            topLeft = Offset(barLeft, barTop),
+                            size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx())
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Hour Axis Labels
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                listOf("00시", "06시", "12시", "18시", "23시").forEach { label ->
+                    Text(
+                        text = label,
+                        fontSize = 9.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+            }
+        }
+    }
+}
+
 
 /**
  * 3. 대화 골든타임 & 라이프스타일 페르소나 카드

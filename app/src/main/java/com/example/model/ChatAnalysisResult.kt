@@ -118,5 +118,34 @@ data class MonthlyAnalysisReport(
     val chemistryDescription: String,  // 관계 케미 설명
     val firstPingStats: FirstPingAnalysis? = null,
     val quirksReport: LinguisticQuirksReport? = null,
-    val heatmapData: TalkHeatmapData? = null
+    val heatmapData: TalkHeatmapData? = null,
+    val stockScrubbingData: StockChartScrubbingData? = null
+)
+
+/**
+ * 주식 차트형 인터랙션: 일자별 스크러빙 포인트 (기능 1 & 4)
+ */
+data class DailyScrubbingPoint(
+    val dayOfMonth: Int,           // 1..31
+    val dateStr: String,           // "2026-03-18"
+    val displayDate: String,       // "3월 18일 (수)"
+    val dayOfWeek: String,         // "수"
+    val messageCount: Int,         // 185
+    val percentVsAvg: Int,         // +140 -> "+140%"
+    val trendLabel: String,        // "+140% 급등 🔥", "평균 수준", "-30% 한산"
+    val isPeakDay: Boolean,        // 최다 대화일 여부
+    val keywords: List<String>,    // ["회식", "프로젝트"]
+    val hourlyCounts: List<Int>,   // 24개 원소 (00시~23시 건수)
+    val peakHour: Int?,            // 피크 시간 (예: 20)
+    val peakHourCount: Int         // 피크 시간 건수 (예: 45)
+)
+
+/**
+ * 주식 차트형 월간 대화량 곡선 & 체결량 종합 데이터
+ */
+data class StockChartScrubbingData(
+    val points: List<DailyScrubbingPoint>,
+    val avgDailyCount: Int,
+    val maxDayCount: Int,
+    val peakPoint: DailyScrubbingPoint?
 )

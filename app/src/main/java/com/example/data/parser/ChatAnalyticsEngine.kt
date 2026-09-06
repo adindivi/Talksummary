@@ -63,7 +63,8 @@ object ChatAnalyticsEngine {
                 chemistryDescription = "대화를 시작하고 서로의 케미를 발견해보세요!",
                 firstPingStats = null,
                 quirksReport = null,
-                heatmapData = calculateTalkHeatmap(year, month, emptyList())
+                heatmapData = calculateTalkHeatmap(year, month, emptyList()),
+                stockScrubbingData = calculateStockChartScrubbingData(year, month, emptyList(), 0, null)
             )
         }
 
@@ -89,6 +90,9 @@ object ChatAnalyticsEngine {
         val quirksReport = calculateLinguisticQuirks(monthDays)
         val heatmapData = calculateTalkHeatmap(year, month, monthDays)
 
+        // 6. 주식 차트형 인터랙션 (1: 월간 대화량 스크러빙 곡선, 4: 24시간 체결량 슬라이더)
+        val stockScrubbingData = calculateStockChartScrubbingData(year, month, monthDays, avgDailyMessages, peakDay)
+
         return MonthlyAnalysisReport(
             yearMonthKey = selectedYearMonth,
             displayMonth = displayMonth,
@@ -103,7 +107,8 @@ object ChatAnalyticsEngine {
             chemistryDescription = chemistryDesc,
             firstPingStats = firstPingStats,
             quirksReport = quirksReport,
-            heatmapData = heatmapData
+            heatmapData = heatmapData,
+            stockScrubbingData = stockScrubbingData
         )
     }
 
@@ -630,4 +635,101 @@ object ChatAnalyticsEngine {
             maxDayCount = maxDayCount
         )
     }
+
+    /**
+     * 주식 차트형 인터랙션 1번(월간 대화량 스크러빙 곡선) 및 4번(선택한 날의 24시간 타임 체결량 슬라이더) 데이터 계산
+     */
+    fun calculateStockChartScrubbingData(
+        year: Int,
+        month: Int,
+        days: List<ChatDay>,
+        avgDailyMessages: Int,
+        peakDay: PeakDayData?
+    ): StockChartScrubbingData {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val totalDaysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val dayByDate = days.associateBy { it.date }
+
+        val weekDayNames = arrayOf("일", "월", "화", "수", "목", "금", "토")
+
+        val points = (1..totalDaysInMonth).map { day ->
+            cal.set(Calendar.DAY_OF_MONTH, day)
+            val dayOfWeekInt = cal.get(Calendar.DAY_OF_WEEK) // 1=Sun, 7=Sat
+            val dayOfWeekStr = weekDayNames[(dayOfWeekInt - 1).coerceIn(0, 6)]
+            val dateStr = "%04d-%02d-%02d".format(Locale.KOREA, year, month, day)
+            val displayDate = "${month}월 ${day}일 (${dayOfWeekStr})"
+
+            val chatDay = dayByDate[dateStr]
+            val count = chatDay?.let { if (it.msgCount > 0) it.msgCount else it.messages.size } ?: 0
+            val keywords = chatDay?.keywords ?: emptyList()
+
+            // Calculate 24-hour distribution (00시 ~ 23시)
+            val hourly = IntArray(24)
+            if (chatDay != null) {
+                for (msg in chatDay.messages) {
+                    val h = parseHour(msg.time)
+                    if (h != null && h in 0..23) {
+                        hourly[h]++
+                    }
+                }
+            }
+
+            var peakH: Int? = null
+            var peakHCount = 0
+            for (h in 0..23) {
+                if (hourly[h] > peakHCount) {
+                    peakHCount = hourly[h]
+                    peakH = h
+                }
+            }
+
+            val isPeak = peakDay != null && peakDay.date == dateStr
+
+            val (pctVsAvg, trendLabel) = if (avgDailyMessages > 0) {
+                val diff = count - avgDailyMessages
+                val pct = ((diff.toFloat() / avgDailyMessages) * 100f).roundToInt()
+                val label = when {
+                    isPeak -> "+${pct}% 최고 피크 🔥"
+                    pct >= 50 -> "+${pct}% 급등 🔥"
+                    pct >= 10 -> "+${pct}% 활발 📈"
+                    pct >= -20 -> "평균 수준 📊"
+                    count > 0 -> "${pct}% 한산 🍃"
+                    else -> "대화 없음"
+                }
+                Pair(pct, label)
+            } else {
+                Pair(0, if (count > 0) "대화 ${count}건" else "대화 없음")
+            }
+
+            DailyScrubbingPoint(
+                dayOfMonth = day,
+                dateStr = dateStr,
+                displayDate = displayDate,
+                dayOfWeek = dayOfWeekStr,
+                messageCount = count,
+                percentVsAvg = pctVsAvg,
+                trendLabel = trendLabel,
+                isPeakDay = isPeak,
+                keywords = keywords,
+                hourlyCounts = hourly.toList(),
+                peakHour = peakH,
+                peakHourCount = peakHCount
+            )
+        }
+
+        val maxCount = points.maxOfOrNull { it.messageCount } ?: 0
+        val peakPoint = points.find { it.isPeakDay } ?: points.maxByOrNull { it.messageCount }
+
+        return StockChartScrubbingData(
+            points = points,
+            avgDailyCount = avgDailyMessages,
+            maxDayCount = maxCount,
+            peakPoint = peakPoint
+        )
+    }
 }
+
