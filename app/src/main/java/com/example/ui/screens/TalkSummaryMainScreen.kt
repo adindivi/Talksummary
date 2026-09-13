@@ -61,6 +61,9 @@ import com.example.service.TaskStatus
 import com.example.ui.viewmodel.TalkSummaryViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.widget.Toast
 import com.example.data.parser.StoryGenerator
 import com.example.model.TalkStoryResult
 import com.example.model.WebtoonStoryResult
@@ -737,7 +740,11 @@ fun TalkSummaryMainScreen(
     // Runtime Permission (Android 13+ Notification for AI Background Service)
     var showPermissionRationale by remember { mutableStateOf(false) }
     var showPrivacyModal by remember { mutableStateOf(false) }
-    var activeStoryChatDay by remember { mutableStateOf<ChatDay?>(null) }
+    var activeStoryDate by rememberSaveable { mutableStateOf<String?>(null) }
+    val activeStoryChatDay = remember(activeStoryDate, allChatDays, selectedChatDay) {
+        if (activeStoryDate == null) null
+        else allChatDays.find { it.date == activeStoryDate } ?: (if (selectedChatDay?.date == activeStoryDate) selectedChatDay else null)
+    }
     var showAnalysisReportModal by rememberSaveable { mutableStateOf(false) }
     var analysisInitialYearMonth by rememberSaveable { mutableStateOf<String?>(null) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -939,7 +946,7 @@ fun TalkSummaryMainScreen(
                         },
                         onPasteTextClick = { viewModel.setShowPasteModal(true) },
                         onOpenPrivacyModal = { showPrivacyModal = true },
-                        onOpenStory = { cd -> activeStoryChatDay = cd }
+                        onOpenStory = { cd -> activeStoryDate = cd.date }
                     )
 
                     Box(
@@ -962,7 +969,7 @@ fun TalkSummaryMainScreen(
                                 onShowPrivacyModal = { showPrivacyModal = true },
                                 onTriggerSummarize = { cd -> viewModel.triggerSingleSummarize(cd) },
                                 isSummarizing = activeSummarizingDate == selectedChatDay?.date,
-                                onOpenStory = { cd -> activeStoryChatDay = cd }
+                                onOpenStory = { cd -> activeStoryDate = cd.date }
                             )
                         } else {
                             Box(
@@ -1038,7 +1045,7 @@ fun TalkSummaryMainScreen(
                             },
                             onPasteTextClick = { viewModel.setShowPasteModal(true) },
                             onOpenPrivacyModal = { showPrivacyModal = true },
-                            onOpenStory = { cd -> activeStoryChatDay = cd }
+                            onOpenStory = { cd -> activeStoryDate = cd.date }
                         )
                     } else {
                         ChatRoomScreen(
@@ -1053,7 +1060,7 @@ fun TalkSummaryMainScreen(
                             onShowPrivacyModal = { showPrivacyModal = true },
                             onTriggerSummarize = { cd -> viewModel.triggerSingleSummarize(cd) },
                             isSummarizing = activeSummarizingDate == selectedChatDay?.date,
-                            onOpenStory = { cd -> activeStoryChatDay = cd }
+                            onOpenStory = { cd -> activeStoryDate = cd.date }
                         )
                     }
                 }
@@ -1187,38 +1194,56 @@ fun TalkSummaryMainScreen(
                 chatDay = chatDay,
                 geminiApiKey = geminiApiKey,
                 activeModel = activeModel,
-                onDismiss = { activeStoryChatDay = null },
+                onDismiss = { activeStoryDate = null },
                 onShareStory = { story ->
-                    try {
-                        val imageFile = ShareImageGenerator.generateStoryCardsImage(context, story)
-                        val captionText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n#카카오톡대화요약 #스토리카드"
-                        shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "3장 스토리 이미지 카톡 공유")
-                    } catch (_: Exception) {
-                        val shareText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n\n" +
-                            "1장: ${story.card1.title}\n${story.card1.story}\n\n" +
-                            "2장: ${story.card2.title}\n${story.card2.story}\n\n" +
-                            "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
-                            "#카카오톡대화요약 #스토리카드"
-                        shareDirectlyToKakaoTalk(context, shareText, "3장 스토리 카톡 공유")
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "🎨 고화질 스토리 카드를 생성하고 있어요...", Toast.LENGTH_SHORT).show()
+                            }
+                            val imageFile = ShareImageGenerator.generateStoryCardsImage(context, story)
+                            val captionText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n#카카오톡대화요약 #스토리카드"
+                            withContext(Dispatchers.Main) {
+                                shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "3장 스토리 이미지 카톡 공유")
+                            }
+                        } catch (_: Exception) {
+                            withContext(Dispatchers.Main) {
+                                val shareText = "🎴 [${story.chatRoomName}] 3장 스토리 요약\n\n" +
+                                    "1장: ${story.card1.title}\n${story.card1.story}\n\n" +
+                                    "2장: ${story.card2.title}\n${story.card2.story}\n\n" +
+                                    "3장: ${story.card3.title}\n${story.card3.story}\n\n" +
+                                    "#카카오톡대화요약 #스토리카드"
+                                shareDirectlyToKakaoTalk(context, shareText, "3장 스토리 카톡 공유")
+                            }
+                        }
                     }
                 },
                 onShareWebtoon = { webtoon ->
-                    try {
-                        val imageFile = ShareImageGenerator.generateWebtoonStripImage(context, webtoon)
-                        val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
-                        val captionText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n#카카오톡대화요약 #3컷웹툰 #인스타툰"
-                        shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "3컷 웹툰 이미지 카톡 공유")
-                    } catch (_: Exception) {
-                        val cutsText = webtoon.cuts.joinToString("\n\n") { cut ->
-                            "${cut.stage}: \"${cut.speechBubble}\" (${cut.speaker} ${cut.emotionEmoji})\n" +
-                            "💥 효과음: ${cut.soundEffect}\n" +
-                            "📖 ${cut.situation}"
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "🎨 3컷 웹툰 고화질 이미지를 생성하고 있어요...", Toast.LENGTH_SHORT).show()
+                            }
+                            val imageFile = ShareImageGenerator.generateWebtoonStripImage(context, webtoon)
+                            val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
+                            val captionText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n#카카오톡대화요약 #3컷웹툰 #인스타툰"
+                            withContext(Dispatchers.Main) {
+                                shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "3컷 웹툰 이미지 카톡 공유")
+                            }
+                        } catch (_: Exception) {
+                            withContext(Dispatchers.Main) {
+                                val cutsText = webtoon.cuts.joinToString("\n\n") { cut ->
+                                    "${cut.stage}: \"${cut.speechBubble}\" (${cut.speaker} ${cut.emotionEmoji})\n" +
+                                    "💥 효과음: ${cut.soundEffect}\n" +
+                                    "📖 ${cut.situation}"
+                                }
+                                val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
+                                val shareText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n\n" +
+                                    "$cutsText\n\n" +
+                                    "#카카오톡대화요약 #3컷웹툰 #인스타툰"
+                                shareDirectlyToKakaoTalk(context, shareText, "3컷 웹툰 카톡 공유")
+                            }
                         }
-                        val aiTag = if (webtoon.isAiGenerated) "제미나이 AI 각색 ✨" else "스마트 만화 요약"
-                        val shareText = "🎨 [${webtoon.chatRoomName}] 3컷 웹툰 요약툰! ($aiTag)\n\n" +
-                            "$cutsText\n\n" +
-                            "#카카오톡대화요약 #3컷웹툰 #인스타툰"
-                        shareDirectlyToKakaoTalk(context, shareText, "3컷 웹툰 카톡 공유")
                     }
                 }
             )
@@ -1234,26 +1259,33 @@ fun TalkSummaryMainScreen(
                     analysisInitialYearMonth = null
                 },
                 onShareReport = { report ->
-                    try {
-                        val imageFile = ShareImageGenerator.generateAnalysisReportImage(context, report)
-                        val captionText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n#카카오톡대화분석 #토크서머리"
-                        shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "카톡 대화 분석 리포트 이미지 공유")
-                    } catch (_: Exception) {
-                        val podiumText = if (report.participantShares.isNotEmpty()) {
-                            report.participantShares.take(3).joinToString("\n") { share ->
-                                val icon = when (share.rank) {
-                                    1 -> "🥇"
-                                    2 -> "🥈"
-                                    3 -> "🥉"
-                                    else -> "⚡"
-                                }
-                                "$icon ${share.name} (${share.count}건, ${share.percentage}%) - ${share.badge}"
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "📊 심층 분석 리포트 이미지를 생성하고 있어요...", Toast.LENGTH_SHORT).show()
                             }
-                        } else "참여자 데이터 없음"
+                            val imageFile = ShareImageGenerator.generateAnalysisReportImage(context, report)
+                            val captionText = "📊 [카톡 대화 분석 리포트 - ${report.displayMonth}]\n#카카오톡대화분석 #토크서머리"
+                            withContext(Dispatchers.Main) {
+                                shareImageDirectlyToKakaoTalk(context, imageFile, captionText, "카톡 대화 분석 리포트 이미지 공유")
+                            }
+                        } catch (_: Exception) {
+                            withContext(Dispatchers.Main) {
+                                val podiumText = if (report.participantShares.isNotEmpty()) {
+                                    report.participantShares.take(3).joinToString("\n") { share ->
+                                        val icon = when (share.rank) {
+                                            1 -> "🥇"
+                                            2 -> "🥈"
+                                            3 -> "🥉"
+                                            else -> "⚡"
+                                        }
+                                        "$icon ${share.name} (${share.count}건, ${share.percentage}%) - ${share.badge}"
+                                    }
+                                } else "참여자 데이터 없음"
 
-                        val peakText = report.peakDay?.let {
-                            "🔥 가장 뜨거웠던 날: ${it.displayDate} (${it.messageCount}건, ${it.percentageOfTotal}%)\n"
-                        } ?: ""
+                                val peakText = report.peakDay?.let {
+                                    "🔥 가장 뜨거웠던 날: ${it.displayDate} (${it.messageCount}건, ${it.percentageOfTotal}%)\n"
+                                } ?: ""
 
                         val pingText = report.firstPingStats?.leaders?.firstOrNull()?.let { leader ->
                             "⚡ 선톡 장인: ${leader.name} (${leader.pingCount}회, ${leader.pingPercentage}%)\n"
@@ -1278,7 +1310,9 @@ fun TalkSummaryMainScreen(
                             "💫 우리들의 케미:\n${report.chemistryTitle}\n${report.chemistryDescription}\n\n" +
                             "#카카오톡대화분석 #토크서머리"
 
-                        shareDirectlyToKakaoTalk(context, shareText, "카톡 대화 분석 리포트 공유")
+                                shareDirectlyToKakaoTalk(context, shareText, "카톡 대화 분석 리포트 공유")
+                            }
+                        }
                     }
                 }
             )

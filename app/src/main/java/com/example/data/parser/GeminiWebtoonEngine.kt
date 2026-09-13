@@ -72,7 +72,8 @@ object GeminiWebtoonEngine {
             return@withContext generateOfflineWebtoonStory(chatDay, roomName)
         }
 
-        val snippet = cleanMessages.take(40).joinToString("\n") { (sender, text) ->
+        val sampled = sampleStratifiedMessages(cleanMessages, 45)
+        val snippet = sampled.joinToString("\n") { (sender, text) ->
             "$sender: $text"
         }
 
@@ -383,5 +384,22 @@ object GeminiWebtoonEngine {
             }
         }
         return result
+    }
+
+    /**
+     * Stratified time sampling: divides the day's messages into 3 temporal stages (Morning/Early, Afternoon, Evening)
+     * so that the 3-cut comic covers the full day's progression rather than only the morning.
+     */
+    fun sampleStratifiedMessages(messages: List<Pair<String, String>>, maxCount: Int = 45): List<Pair<String, String>> {
+        if (messages.size <= maxCount) return messages
+        val segmentSize = messages.size / 3
+        val samplePerSegment = maxCount / 3
+
+        val part1 = messages.subList(0, segmentSize).take(samplePerSegment)
+        val part2Start = segmentSize + maxOf(0, (segmentSize - samplePerSegment) / 2)
+        val part2 = messages.subList(part2Start, minOf(messages.size, part2Start + samplePerSegment))
+        val part3 = messages.takeLast(samplePerSegment)
+
+        return (part1 + part2 + part3).distinct()
     }
 }

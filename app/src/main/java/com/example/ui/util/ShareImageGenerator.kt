@@ -61,6 +61,7 @@ object ShareImageGenerator {
         FileOutputStream(file).use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
+        bitmap.recycle()
         return file
     }
 
@@ -475,8 +476,22 @@ object ShareImageGenerator {
             typeface = Typeface.DEFAULT_BOLD
         }
 
-        // Fixed high quality layout height
-        val totalHeight = 2160
+        // Dynamic layout measurement to prevent clipping on long insights
+        val maxTextWidth = (CONTENT_WIDTH - 56f).toInt()
+        val descPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 26f
+            color = Color.parseColor("#475569")
+            typeface = Typeface.DEFAULT
+        }
+        val goldenDescHeight = measureMultilineText(report.timeSlotStats.personaDescription, maxTextWidth, descPaint)
+        val chemDescHeight = measureMultilineText(report.chemistryDescription, maxTextWidth, descPaint)
+
+        val insightCardHeight = maxOf(340f, 28f + 26f + 44f + goldenDescHeight + 36f + 28f + 26f + 44f + chemDescHeight + 36f)
+        val rankingCardHeight = 440f
+        val gridCardHeight = 220f
+        val headerHeight = 56f + 56f + 52f // 164f
+        val totalHeight = (56f + headerHeight + 32f + rankingCardHeight + 32f + (gridCardHeight * 2) + 52f + insightCardHeight + 40f + 110f).toInt()
+
         val bitmap = Bitmap.createBitmap(POSTER_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
@@ -504,7 +519,6 @@ object ShareImageGenerator {
         drawY += 52f
 
         // Section 1: 이 달의 발언 랭킹 (Top 3 Podium Card)
-        val rankingCardHeight = 440f
         val rankingRect = RectF(PADDING_X, drawY, PADDING_X + CONTENT_WIDTH, drawY + rankingCardHeight)
 
         paint.style = Paint.Style.FILL
@@ -589,7 +603,6 @@ object ShareImageGenerator {
 
         // Section 2: 핵심 지표 2x2 그리드 (Highlights Grid)
         val gridCardWidth = (CONTENT_WIDTH - 24f) / 2f
-        val gridCardHeight = 220f
 
         val cellA = RectF(PADDING_X, drawY, PADDING_X + gridCardWidth, drawY + gridCardHeight)
         val cellB = RectF(PADDING_X + gridCardWidth + 24f, drawY, PADDING_X + CONTENT_WIDTH, drawY + gridCardHeight)
@@ -620,7 +633,6 @@ object ShareImageGenerator {
         drawY += (gridCardHeight * 2) + 52f
 
         // Section 3: 대화 골든타임 & 케미 카드
-        val insightCardHeight = 440f
         val insightRect = RectF(PADDING_X, drawY, PADDING_X + CONTENT_WIDTH, drawY + insightCardHeight)
 
         paint.style = Paint.Style.FILL
@@ -642,14 +654,8 @@ object ShareImageGenerator {
         canvas.drawText(goldenTitle, insightX, insightY + 26f, textPaint)
         insightY += 44f
 
-        val descPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 26f
-            color = Color.parseColor("#475569")
-            typeface = Typeface.DEFAULT
-        }
-        val maxTextWidth = (CONTENT_WIDTH - 56f).toInt()
-        val goldenDescHeight = drawMultilineText(canvas, report.timeSlotStats.personaDescription, insightX, insightY, maxTextWidth, descPaint)
-        insightY += goldenDescHeight + 36f
+        val drawnGoldenHeight = drawMultilineText(canvas, report.timeSlotStats.personaDescription, insightX, insightY, maxTextWidth, descPaint)
+        insightY += drawnGoldenHeight + 36f
 
         // Subtle Divider
         paint.style = Paint.Style.STROKE

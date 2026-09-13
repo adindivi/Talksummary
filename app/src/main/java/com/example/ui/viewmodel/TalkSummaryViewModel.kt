@@ -280,6 +280,9 @@ class TalkSummaryViewModel(
 
             val activeArchive = repository.getSetting("active_archive_id")
             _activeArchiveId.value = activeArchive
+            if (!activeArchive.isNullOrBlank()) {
+                repository.setActiveArchiveId(activeArchive)
+            }
 
             updateAiState()
         }
@@ -316,8 +319,22 @@ class TalkSummaryViewModel(
     }
 
     fun selectChatDay(chatDay: ChatDay?) {
-        _selectedChatDay.value = chatDay
-        if (chatDay != null && (_mainUser.value.isEmpty() || !chatDay.participants.contains(_mainUser.value))) {
+        if (chatDay == null) {
+            _selectedChatDay.value = null
+            return
+        }
+        if (chatDay.messages.isNotEmpty()) {
+            _selectedChatDay.value = chatDay
+        } else {
+            _selectedChatDay.value = chatDay
+            viewModelScope.launch(Dispatchers.IO) {
+                val fullDay = repository.getChatDayWithMessages(chatDay.date)
+                if (fullDay != null && _selectedChatDay.value?.date == chatDay.date) {
+                    _selectedChatDay.value = fullDay
+                }
+            }
+        }
+        if (_mainUser.value.isEmpty() || !chatDay.participants.contains(_mainUser.value)) {
             val firstParticipant = chatDay.participants.firstOrNull() ?: ""
             setMainUser(firstParticipant)
         }
@@ -540,10 +557,17 @@ class TalkSummaryViewModel(
                     return@launch
                 }
 
-                // Step 2: Database saving with progress updates on Dispatchers.IO
+                // Step 2: Generate archiveId & Cache internal storage
+                val archiveId = java.util.UUID.randomUUID().toString()
+                val archivesDir = File(getApplication<Application>().filesDir, "archives").apply { mkdirs() }
+                val cachedFile = File(archivesDir, "${archiveId}.txt")
+                withContext(Dispatchers.IO) {
+                    cachedFile.writeBytes(bytes)
+                }
+
+                // Step 3: Database saving with progress updates on Dispatchers.IO
                 backgroundTaskManager.updateProgress(0, parsed.size, "날짜별로 예쁘게 정리하고 있어요 (0/${parsed.size}일)...", false)
-                repository.clearAll()
-                repository.saveChatDays(parsed) { current, total ->
+                repository.saveChatDays(parsed, archiveId = archiveId) { current, total ->
                     backgroundTaskManager.updateProgress(
                         current = current,
                         total = total,
@@ -557,14 +581,7 @@ class TalkSummaryViewModel(
                         total
                     )
                 }
-
-                // Step 3: Archive creation & internal storage caching
-                val archiveId = java.util.UUID.randomUUID().toString()
-                val archivesDir = File(getApplication<Application>().filesDir, "archives").apply { mkdirs() }
-                val cachedFile = File(archivesDir, "${archiveId}.txt")
-                withContext(Dispatchers.IO) {
-                    cachedFile.writeBytes(bytes)
-                }
+                repository.setActiveArchiveId(archiveId)
 
                 val firstLines = withContext(Dispatchers.Default) {
                     try {
@@ -647,10 +664,13 @@ class TalkSummaryViewModel(
                 if (file.exists()) {
                     file.delete()
                 }
+                repository.deleteChatDaysForArchive(archive.id)
                 repository.deleteArchive(archive.id)
                 if (_activeArchiveId.value == archive.id) {
                     _activeArchiveId.value = null
                     repository.saveSetting("active_archive_id", "")
+                    repository.setActiveArchiveId(null)
+                    selectChatDay(null)
                 }
                 showToast("'${archive.roomTitle}' 보관함에서 삭제되었어요.", "info")
             } catch (e: Exception) {
@@ -669,16 +689,36 @@ class TalkSummaryViewModel(
         _isProcessing.value = true
 
         viewModelScope.launch {
-            backgroundTaskManager.startTask(
-                taskType = TaskType.PARSE_CHAT,
-                title = "보관된 대화 불러오는 중",
-                detail = "'${archive.roomTitle}' 대화를 열고 있어요...",
-                isIndeterminate = true,
-                isCancellable = false
-            )
-            InferenceForegroundService.start(getApplication(), "⚡ 대화방 전환 중", "'${archive.roomTitle}' 대화를 열고 있어요...")
-
             try {
+                // Check if days are already stored in Room DB for this archive
+                val hasExistingDays = withContext(Dispatchers.IO) {
+                    repository.hasChatDaysForArchive(archive.id)
+                }
+
+                if (hasExistingDays) {
+                    // Instant 0.01s switch without re-parsing, keeping all existing AI summaries!
+                    val now = System.currentTimeMillis()
+                    withContext(Dispatchers.IO) {
+                        repository.updateArchiveLastOpened(archive.id, now)
+                        repository.saveSetting("active_archive_id", archive.id)
+                    }
+                    repository.setActiveArchiveId(archive.id)
+                    _activeArchiveId.value = archive.id
+                    selectChatDay(null)
+                    showToast("'${archive.roomTitle}' 대화방으로 전환되었어요!", "success")
+                    return@launch
+                }
+
+                // Fallback: If DB records don't exist yet, parse cached file into DB
+                backgroundTaskManager.startTask(
+                    taskType = TaskType.PARSE_CHAT,
+                    title = "보관된 대화 불러오는 중",
+                    detail = "'${archive.roomTitle}' 대화를 열고 있어요...",
+                    isIndeterminate = true,
+                    isCancellable = false
+                )
+                InferenceForegroundService.start(getApplication(), "⚡ 대화방 전환 중", "'${archive.roomTitle}' 대화를 열고 있어요...")
+
                 val file = File(archive.internalFilePath)
                 if (!file.exists()) {
                     backgroundTaskManager.failTask("보관된 대화 파일을 찾을 수 없어요.")
@@ -700,13 +740,15 @@ class TalkSummaryViewModel(
                     return@launch
                 }
 
-                repository.clearAll()
-                repository.saveChatDays(parsed)
+                repository.saveChatDays(parsed, archiveId = archive.id)
 
                 val now = System.currentTimeMillis()
-                repository.updateArchiveLastOpened(archive.id, now)
+                withContext(Dispatchers.IO) {
+                    repository.updateArchiveLastOpened(archive.id, now)
+                    repository.saveSetting("active_archive_id", archive.id)
+                }
+                repository.setActiveArchiveId(archive.id)
                 _activeArchiveId.value = archive.id
-                repository.saveSetting("active_archive_id", archive.id)
 
                 selectChatDay(null)
                 backgroundTaskManager.completeTask("'${archive.roomTitle}' 대화방을 열었어요.")
@@ -933,8 +975,22 @@ $serialized
             InferenceForegroundService.start(getApplication(), "⚡ $title", message)
 
             try {
+                val targetMessages = if (chatDay.messages.isNotEmpty()) {
+                    chatDay.messages
+                } else {
+                    withContext(Dispatchers.IO) {
+                        repository.getChatDayWithMessages(chatDay.date)?.messages ?: emptyList()
+                    }
+                }
+
+                if (targetMessages.isEmpty()) {
+                    backgroundTaskManager.failTask("요약할 대화 내용이 없습니다.")
+                    showError("요약 불가", "해당 날짜의 대화 내용을 불러올 수 없습니다.")
+                    return@launch
+                }
+
                 val responseText = if (useLocal) {
-                    val localPrompt = buildLocalGgufPrompt(chatDay.messages)
+                    val localPrompt = buildLocalGgufPrompt(targetMessages)
                     val startTime = System.currentTimeMillis()
                     
                     val loadRes = modelLoader.loadModel(localPath)
@@ -981,7 +1037,7 @@ $serialized
 
                     generatedText
                 } else {
-                    val prompt = buildGeminiPrompt(chatDay.messages)
+                    val prompt = buildGeminiPrompt(targetMessages)
                     requestGemini(prompt, key, _activeModel.value)
                 }
 
@@ -1083,7 +1139,17 @@ $serialized
                     )
 
                     try {
-                        val prompt = buildGeminiPrompt(item.messages)
+                        val messages = if (item.messages.isNotEmpty()) {
+                            item.messages
+                        } else {
+                            withContext(Dispatchers.IO) {
+                                repository.getChatDayWithMessages(item.date)?.messages ?: emptyList()
+                            }
+                        }
+                        if (messages.isEmpty()) {
+                            continue
+                        }
+                        val prompt = buildGeminiPrompt(messages)
                         val result = requestGemini(prompt, key, _activeModel.value)
                         coroutineContext.ensureActive()
                         if (result != null) {

@@ -66,30 +66,82 @@ object KakaoTalkParser {
     }
 
     /**
+     * Fast 8KB header-based charset detection avoiding multi-pass 10MB allocations.
+     */
+    fun detectCharset(bytes: ByteArray): java.nio.charset.Charset {
+        if (bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
+            return Charsets.UTF_8
+        }
+        if (bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte()) {
+            return Charsets.UTF_16LE
+        }
+        if (bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte()) {
+            return Charsets.UTF_16BE
+        }
+
+        // Test sample of up to 8KB
+        val sampleSize = minOf(bytes.size, 8192)
+        val sampleBytes = if (sampleSize == bytes.size) bytes else bytes.copyOf(sampleSize)
+
+        val candidateNames = listOf("UTF-8", "EUC-KR", "MS949", "UTF-16LE")
+        for (name in candidateNames) {
+            try {
+                val cs = java.nio.charset.Charset.forName(name)
+                val decoder = cs.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                val buffer = java.nio.ByteBuffer.wrap(sampleBytes)
+                val charBuffer = decoder.decode(buffer)
+                val sampleText = charBuffer.toString()
+                if (sampleText.contains("카카오톡") || sampleText.contains("대화") || sampleText.contains("년") || sampleText.contains(":") || sampleText.contains("Saved on")) {
+                    return cs
+                }
+            } catch (_: Exception) {
+                // Ignore and try next
+            }
+        }
+        return Charsets.UTF_8
+    }
+
+    /**
+     * Filters out KakaoTalk system announcements, room enters/leaves, and admin notices
+     * so they don't get appended to previous chat messages.
+     */
+    fun isSystemAnnouncement(text: String): Boolean {
+        val t = text.trim()
+        if (t.isEmpty()) return true
+        if (t.startsWith("---------------") || t.startsWith("===============")) return true
+        if (t.endsWith("님이 들어왔습니다.") || t.endsWith("님이 나갔습니다.") || t.endsWith("님을 내보냈습니다.")) return true
+        if (t.contains("채팅방 관리자가 메시지를 가렸습니다") || t.contains("운영정책을 위반하여 가려진 메시지입니다")) return true
+        if (t.contains("카카오톡 대화") || t.startsWith("저장한 날짜 :") || t.startsWith("Saved on ")) return true
+        return false
+    }
+
+    /**
      * Decode files using smart multi-charset verification to prevent garbled text imports!
      */
     fun parseFromBytes(bytes: ByteArray, fallbackDate: String? = null): Map<String, List<Message>> {
-        val encodings = listOf("UTF-8", "EUC-KR", "UTF-16", "MS949", "UTF-16LE", "UTF-16BE")
+        val detected = detectCharset(bytes)
+        try {
+            val decoded = String(bytes, detected).replace("\uFEFF", "")
+            val result = parse(decoded, fallbackDate)
+            if (result.isNotEmpty()) {
+                return result
+            }
+        } catch (_: Exception) {}
 
-        // Try each encoding and return the first one that successfully parses messages.
-        for (encoding in encodings) {
+        // Fallback encodings if detected didn't produce messages
+        val fallbackEncodings = listOf("UTF-8", "EUC-KR", "MS949", "UTF-16LE", "UTF-16BE")
+        for (encoding in fallbackEncodings) {
             try {
-                val decoded = String(bytes, charset(encoding)).replace("\uFEFF", "")
+                val cs = java.nio.charset.Charset.forName(encoding)
+                if (cs == detected) continue
+                val decoded = String(bytes, cs).replace("\uFEFF", "")
                 val result = parse(decoded, fallbackDate)
                 if (result.isNotEmpty()) {
                     return result
                 }
-            } catch (e: Exception) {
-                // Ignore and continue
-            }
-        }
-
-        // Final fallback: standard raw parsing from UTF-8
-        try {
-            val decodedUtf8 = String(bytes, Charsets.UTF_8).replace("\uFEFF", "")
-            return parse(decodedUtf8, fallbackDate)
-        } catch (e: Exception) {
-            // ignore
+            } catch (_: Exception) {}
         }
         return emptyMap()
     }
@@ -298,10 +350,10 @@ object KakaoTalkParser {
                 continue
             }
 
-            // 2. Try date headers (strip leading/trailing decoration hyphens first)
+            // 2. Try date headers (strip leading/trailing decoration hyphens, brackets, whitespace first)
             var cleanLine = trimmedLine
-            if (cleanLine.startsWith("-") || cleanLine.endsWith("-")) {
-                cleanLine = cleanLine.replace(Regex("^\\s*-+|-\\s*$"), "").trim()
+            if (cleanLine.startsWith("-") || cleanLine.endsWith("-") || cleanLine.startsWith("[") || cleanLine.endsWith("]")) {
+                cleanLine = cleanLine.replace(Regex("^[\\s\\-\\[\\]]+|[\\s\\-\\[\\]]+$"), "").trim()
             }
 
             var matchedDate = false
@@ -551,6 +603,10 @@ object KakaoTalkParser {
             }
 
             // 4. Append as multi-line continuing content
+            if (isSystemAnnouncement(trimmedLine)) {
+                continue
+            }
+
             if (currentDateStr != null && chatDays.containsKey(currentDateStr) && chatDays[currentDateStr]?.isNotEmpty() == true) {
                 val isTimestampPrefix = trimmedLine.startsWith("오전") || trimmedLine.startsWith("오후") || trimmedLine.matches(Regex("^\\d{4}.*"))
                 if (!isTimestampPrefix) {

@@ -5,22 +5,58 @@ import com.example.data.db.AppDatabase
 import com.example.data.db.ChatDayMapper
 import com.example.data.db.SettingEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class TalkSummaryRepository(private val db: AppDatabase) {
 
-    val chatDaysFlow: Flow<List<ChatDay>> = db.chatDayDao().getAllChatDaysFlow().map { list ->
-        list.map { ChatDayMapper.fromEntity(it) }
+    private val _activeArchiveId = MutableStateFlow("default")
+    val activeArchiveId = _activeArchiveId.asStateFlow()
+
+    fun setActiveArchiveId(id: String?) {
+        _activeArchiveId.value = id?.ifBlank { "default" } ?: "default"
     }
 
-    suspend fun getAllChatDays(): List<ChatDay> = withContext(Dispatchers.IO) {
-        db.chatDayDao().getAllChatDays().map { ChatDayMapper.fromEntity(it) }
+    /**
+     * Memory-safe lightweight chat days flow.
+     * Emits ChatDay summaries without deserializing rawMessagesJson,
+     * completely eliminating SQLite 2MB CursorWindow limits and OOM risk!
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val chatDaysFlow: Flow<List<ChatDay>> = _activeArchiveId.flatMapLatest { archiveId ->
+        db.chatDayDao().getSummaryChatDaysFlow(archiveId).map { list ->
+            list.map { ChatDayMapper.fromSummary(it) }
+        }
+    }
+
+    suspend fun getAllChatDays(archiveId: String = _activeArchiveId.value): List<ChatDay> = withContext(Dispatchers.IO) {
+        db.chatDayDao().getAllChatDays(archiveId).map { ChatDayMapper.fromEntity(it) }
+    }
+
+    suspend fun getChatDayWithMessages(date: String, archiveId: String = _activeArchiveId.value): ChatDay? = withContext(Dispatchers.IO) {
+        db.chatDayDao().getChatDayByDate(archiveId, date)?.let { ChatDayMapper.fromEntity(it) }
+    }
+
+    suspend fun getChatDaysWithMessagesForMonth(monthPrefix: String, archiveId: String = _activeArchiveId.value): List<ChatDay> = withContext(Dispatchers.IO) {
+        db.chatDayDao().getChatDaysForMonth(archiveId, monthPrefix).map { ChatDayMapper.fromEntity(it) }
+    }
+
+    suspend fun hasChatDaysForArchive(archiveId: String): Boolean = withContext(Dispatchers.IO) {
+        db.chatDayDao().getChatDaysCountByArchive(archiveId) > 0
+    }
+
+    suspend fun deleteChatDaysForArchive(archiveId: String) = withContext(Dispatchers.IO) {
+        db.chatDayDao().deleteChatDaysByArchive(archiveId)
     }
 
     suspend fun saveChatDays(
         parsedData: Map<String, List<Message>>,
+        archiveId: String = _activeArchiveId.value,
         onProgress: ((current: Int, total: Int) -> Unit)? = null
     ) {
         // Step 1: Pre-compute CPU intensive heuristic analysis on Dispatchers.Default
@@ -42,7 +78,7 @@ class TalkSummaryRepository(private val db: AppDatabase) {
                 db.withTransaction {
                     batch.forEach { (date, messages, heuristic) ->
                         // Check if there's already an existing record for this date to preserve AI summaries!
-                        val existing = db.chatDayDao().getChatDayByDate(date)
+                        val existing = db.chatDayDao().getChatDayByDate(archiveId, date)
                         var summary = ""
                         var keywords = emptyList<String>()
                         var participants = emptyList<String>()
@@ -63,6 +99,7 @@ class TalkSummaryRepository(private val db: AppDatabase) {
                         }
 
                         val entity = ChatDayMapper.toEntity(
+                            archiveId = archiveId,
                             date = date,
                             messages = messages,
                             summary = summary,
@@ -77,8 +114,8 @@ class TalkSummaryRepository(private val db: AppDatabase) {
         }
     }
 
-    suspend fun updateSummary(date: String, summary: String) = withContext(Dispatchers.IO) {
-        db.chatDayDao().updateSummary(date, summary)
+    suspend fun updateSummary(date: String, summary: String, archiveId: String = _activeArchiveId.value) = withContext(Dispatchers.IO) {
+        db.chatDayDao().updateSummary(archiveId, date, summary)
     }
 
     suspend fun clearAll() = withContext(Dispatchers.IO) {
