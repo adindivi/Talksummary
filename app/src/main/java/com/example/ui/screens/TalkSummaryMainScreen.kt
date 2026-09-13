@@ -1548,60 +1548,205 @@ fun TimelineColumn(
         // Only show usage tip if database is empty - Reclaims massive space on mobile once files are uploaded!
         if (allChatDays.isEmpty()) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Header: Badge + Title & Subtitle
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Info,
-                            contentDescription = "Tip",
-                            tint = Color(0xFFD97706),
-                            modifier = Modifier.size(14.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFFEF3C7), RoundedCornerShape(999.dp))
+                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Info,
+                                    contentDescription = "가이드",
+                                    tint = Color(0xFFD97706),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "초간단 이용 가이드",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF92400E)
+                                )
+                            }
+                        }
                         Text(
-                            text = "💡 초간단 이용 가이드",
+                            text = "3단계로 끝내기 ✨",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF78350F)
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF64748B)
                         )
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "카카오톡 대화를 3단계로 쉽고 빠르게 요약해 보세요",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandSlate
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 3-Step Practical Flow (Toss + Apple Style)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Box(
+                        // Step 1: 카톡 대화 내보내기
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier
-                                .weight(1.0f)
-                                .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(10.dp))
-                                .clickable { onPasteTextClick() }
-                                .padding(8.dp)
+                                .fillMaxWidth()
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
                         ) {
-                            Text(
-                                text = "📂 1. 대화 파일 / 붙여넣기\n[대화 파일 열기] 또는 여기를 눌러 복사한 대화를 직접 붙여넣어 시작합니다.",
-                                fontSize = 9.5.sp,
-                                lineHeight = 14.sp,
-                                color = Color(0xFF78350F)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(Color(0xFFFEE500), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "1",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E293B)
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "💬 1단계. 카톡에서 대화 내보내기",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandSlate
+                                )
+                                Text(
+                                    text = "카톡 채팅방 우측 상단 메뉴(≡) > 설정(⚙️) > [대화 내용 내보내기] > [텍스트만 보내기/저장]을 눌러 파일을 저장해 주세요.",
+                                    fontSize = 11.sp,
+                                    lineHeight = 16.sp,
+                                    color = Color(0xFF475569)
+                                )
+                            }
                         }
-                        Box(
+
+                        // Step 2: 대화 파일 열기 또는 직접 붙여넣기
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier
-                                .weight(1.0f)
-                                .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(10.dp))
-                                .padding(8.dp)
+                                .fillMaxWidth()
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
                         ) {
-                            Text(
-                                text = "📱 2. 대화 시뮬레이터\n요약 타임라인 카드를 터치하면 실제 카카오톡 스타일 시뮬레이터로 대화를 확인합니다.",
-                                fontSize = 9.5.sp,
-                                lineHeight = 14.sp,
-                                color = Color(0xFF78350F)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(Color(0xFF2563EB), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "2",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "📂 2단계. 대화 파일 열기 / 직접 붙여넣기",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandSlate
+                                )
+                                Text(
+                                    text = "아래 노란색 [대화 파일 열기] 버튼으로 .txt 파일을 불러오거나, 복사한 대화 내용을 직접 붙여넣을 수도 있어요.",
+                                    fontSize = 11.sp,
+                                    lineHeight = 16.sp,
+                                    color = Color(0xFF475569)
+                                )
+                                // Clickable quick action chip
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFEEF2FF))
+                                        .border(0.5.dp, Color(0xFFC7D2FE), RoundedCornerShape(6.dp))
+                                        .clickable { onPasteTextClick() }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ContentPaste,
+                                        contentDescription = "붙여넣기",
+                                        tint = Color(0xFF4338CA),
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Text(
+                                        text = "대화 내용 직접 붙여넣기 ➔",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF4338CA)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Step 3: AI 3줄 요약 & 3컷 웹툰 & 고화질 이미지 공유
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(Color(0xFF059669), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "3",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "🎨 3단계. AI 3줄 요약·3컷 웹툰 & 이미지 카톡 공유",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandSlate
+                                )
+                                Text(
+                                    text = "대화가 불러와지면 날짜별 AI 3줄 요약과 3컷 웹툰, 이 달의 대화 분석 리포트를 1080px 고화질 포스터 이미지로 카톡에 바로 공유하세요!",
+                                    fontSize = 11.sp,
+                                    lineHeight = 16.sp,
+                                    color = Color(0xFF475569)
+                                )
+                            }
                         }
                     }
                 }
