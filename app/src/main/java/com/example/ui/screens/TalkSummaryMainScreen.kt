@@ -32,6 +32,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1506,6 +1508,72 @@ fun NonBlockingTaskProgressBar(
     }
 }
 
+/**
+ * Clean Kakao-themed 3-Step Guide Card with mathematically centered digit badges
+ * and perfectly aligned Row hierarchy.
+ */
+@Composable
+private fun GuideStepCard(
+    stepNum: String,
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+            .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(Color(0xFFFEE500), CircleShape)
+                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stepNum,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 11.sp,
+                    style = LocalTextStyle.current.copy(
+                        platformStyle = @Suppress("DEPRECATION") PlatformTextStyle(
+                            includeFontPadding = false
+                        ),
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.Both
+                        )
+                    ),
+                    modifier = if (stepNum == "1") Modifier.offset(x = 0.5.dp) else Modifier
+                )
+            }
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = BrandSlate
+            )
+        }
+        Text(
+            text = description,
+            fontSize = 10.5.sp,
+            lineHeight = 14.5.sp,
+            color = Color(0xFF475569),
+            modifier = Modifier.padding(start = 28.dp)
+        )
+    }
+}
+
 // TIMELINE VIEW COLUMN COMPONENT
 @Composable
 fun TimelineColumn(
@@ -1598,133 +1666,31 @@ fun TimelineColumn(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 3-Step Practical Flow (Kakao Yellow Badges + Top Alignment)
+                    // 3-Step Practical Flow (Kakao Yellow Badges: Mathematically Centered Digits & Row Alignment)
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         // Step 1: 카톡 대화 내보내기
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(9.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
-                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 1.dp)
-                                    .size(22.dp)
-                                    .background(Color(0xFFFEE500), CircleShape)
-                                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "1",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E293B)
-                                )
-                            }
-                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                Text(
-                                    text = "카카오톡 대화 내보내기",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandSlate
-                                )
-                                Text(
-                                    text = "채팅방 설정(≡) > [대화 내용 내보내기]에서 텍스트로 저장해요.",
-                                    fontSize = 10.5.sp,
-                                    lineHeight = 14.sp,
-                                    color = Color(0xFF475569)
-                                )
-                            }
-                        }
+                        GuideStepCard(
+                            stepNum = "1",
+                            title = "카카오톡 대화 내보내기",
+                            description = "채팅방 설정(≡) > [대화 내용 내보내기]에서 텍스트로 저장해요."
+                        )
 
                         // Step 2: 대화 파일 불러오기
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(9.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
-                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 1.dp)
-                                    .size(22.dp)
-                                    .background(Color(0xFFFEE500), CircleShape)
-                                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "2",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E293B)
-                                )
-                            }
-                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                Text(
-                                    text = "대화 파일 불러오기",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandSlate
-                                )
-                                Text(
-                                    text = "아래 [대화 파일 열기] 버튼을 눌러 저장한 파일을 선택해요.",
-                                    fontSize = 10.5.sp,
-                                    lineHeight = 14.sp,
-                                    color = Color(0xFF475569)
-                                )
-                            }
-                        }
+                        GuideStepCard(
+                            stepNum = "2",
+                            title = "대화 파일 불러오기",
+                            description = "아래 [대화 파일 열기] 버튼을 눌러 저장한 파일을 선택해요."
+                        )
 
                         // Step 3: AI 요약 & 웹툰 공유
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(9.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
-                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 1.dp)
-                                    .size(22.dp)
-                                    .background(Color(0xFFFEE500), CircleShape)
-                                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "3",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E293B)
-                                )
-                            }
-                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                Text(
-                                    text = "AI 3줄 요약 & 웹툰 공유",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandSlate
-                                )
-                                Text(
-                                    text = "하루 대화 요약과 3컷 만화를 이미지로 카톡에 바로 공유해요.",
-                                    fontSize = 10.5.sp,
-                                    lineHeight = 14.sp,
-                                    color = Color(0xFF475569)
-                                )
-                            }
-                        }
+                        GuideStepCard(
+                            stepNum = "3",
+                            title = "AI 3줄 요약 & 웹툰 공유",
+                            description = "하루 대화 요약과 3컷 만화를 이미지로 카톡에 바로 공유해요."
+                        )
                     }
                 }
             }
