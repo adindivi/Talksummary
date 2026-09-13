@@ -836,47 +836,41 @@ fun TalkSummaryMainScreen(
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 IconButton(
                                     onClick = { viewModel.setShowArchiveModal(true) },
-                                    modifier = Modifier
-                                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
-                                        .size(36.dp)
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Folder,
                                         contentDescription = "대화방 보관함",
-                                        tint = Color(0xFF4F46E5),
-                                        modifier = Modifier.size(19.dp)
+                                        tint = Color(0xFF1E293B),
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
 
                                 IconButton(
                                     onClick = { viewModel.setShowSettings(true) },
-                                    modifier = Modifier
-                                        .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
-                                        .size(36.dp)
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Shield,
+                                        imageVector = Icons.Filled.Settings,
                                         contentDescription = "AI 비서 및 환경 설정",
-                                        tint = Color(0xFF4F46E5),
-                                        modifier = Modifier.size(19.dp)
+                                        tint = Color(0xFF1E293B),
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
 
                                 IconButton(
                                     onClick = { showClearConfirm = true },
-                                    modifier = Modifier
-                                        .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
-                                        .size(36.dp)
+                                    modifier = Modifier.size(36.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Delete,
+                                        imageVector = Icons.Filled.DeleteOutline,
                                         contentDescription = "대화 기록 지우기",
-                                        tint = Color(0xFFEF4444),
-                                        modifier = Modifier.size(19.dp)
+                                        tint = Color(0xFF64748B),
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
@@ -1563,8 +1557,8 @@ fun TimelineColumn(
                     ) {
                         Box(
                             modifier = Modifier
-                                .background(Color(0xFFEFF6FF), RoundedCornerShape(999.dp))
-                                .border(0.8.dp, Color(0xFFDBEAFE), RoundedCornerShape(999.dp))
+                                .background(Color(0xFFFEF9C3), RoundedCornerShape(999.dp))
+                                .border(0.8.dp, Color(0xFFFEF08A), RoundedCornerShape(999.dp))
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Row(
@@ -1574,14 +1568,14 @@ fun TimelineColumn(
                                 Icon(
                                     imageVector = Icons.Filled.Info,
                                     contentDescription = "가이드",
-                                    tint = Color(0xFF2563EB),
+                                    tint = Color(0xFFD97706),
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
                                     text = "초간단 이용 가이드",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1D4ED8)
+                                    color = Color(0xFF854D0E)
                                 )
                             }
                         }
@@ -1604,14 +1598,14 @@ fun TimelineColumn(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 3-Step Practical Flow (Toss Style: Unified Stepper Badges + Optimized Copy)
+                    // 3-Step Practical Flow (Kakao Yellow Badges + Top Alignment)
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         // Step 1: 카톡 대화 내보내기
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.Top,
                             horizontalArrangement = Arrangement.spacedBy(9.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1621,15 +1615,17 @@ fun TimelineColumn(
                         ) {
                             Box(
                                 modifier = Modifier
+                                    .padding(top = 1.dp)
                                     .size(22.dp)
-                                    .background(Color(0xFF2563EB), CircleShape),
+                                    .background(Color(0xFFFEE500), CircleShape)
+                                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "1",
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color(0xFF1E293B)
                                 )
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -1650,7 +1646,7 @@ fun TimelineColumn(
 
                         // Step 2: 대화 파일 불러오기
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.Top,
                             horizontalArrangement = Arrangement.spacedBy(9.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1660,15 +1656,17 @@ fun TimelineColumn(
                         ) {
                             Box(
                                 modifier = Modifier
+                                    .padding(top = 1.dp)
                                     .size(22.dp)
-                                    .background(Color(0xFF2563EB), CircleShape),
+                                    .background(Color(0xFFFEE500), CircleShape)
+                                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "2",
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color(0xFF1E293B)
                                 )
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -1689,7 +1687,7 @@ fun TimelineColumn(
 
                         // Step 3: AI 요약 & 웹툰 공유
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.Top,
                             horizontalArrangement = Arrangement.spacedBy(9.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1699,15 +1697,17 @@ fun TimelineColumn(
                         ) {
                             Box(
                                 modifier = Modifier
+                                    .padding(top = 1.dp)
                                     .size(22.dp)
-                                    .background(Color(0xFF2563EB), CircleShape),
+                                    .background(Color(0xFFFEE500), CircleShape)
+                                    .border(0.8.dp, Color(0xFFE2D800), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "3",
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color(0xFF1E293B)
                                 )
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
