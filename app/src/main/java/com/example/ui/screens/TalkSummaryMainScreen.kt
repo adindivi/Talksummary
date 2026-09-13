@@ -1549,12 +1549,12 @@ fun TimelineColumn(
         if (allChatDays.isEmpty()) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                     // Header: Badge + Title & Subtitle
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1564,21 +1564,21 @@ fun TimelineColumn(
                         Box(
                             modifier = Modifier
                                 .background(Color(0xFFFEF3C7), RoundedCornerShape(999.dp))
-                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Info,
                                     contentDescription = "가이드",
                                     tint = Color(0xFFD97706),
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = "초간단 이용 가이드",
-                                    fontSize = 11.5.sp,
+                                    text = "초간단 가이드",
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF92400E)
                                 )
@@ -1592,158 +1592,134 @@ fun TimelineColumn(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "카카오톡 대화를 3단계로 쉽고 빠르게 요약해 보세요",
+                        text = "카카오톡 대화, 딱 3단계로 끝내요",
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandSlate
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // 3-Step Practical Flow (Toss + Apple Style)
+                    // 3-Step Practical Flow (Toss Style: Simple, Friendly, Compact)
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         // Step 1: 카톡 대화 내보내기
                         Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-                                .padding(12.dp)
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(22.dp)
                                     .background(Color(0xFFFEE500), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "1",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1E293B)
                                 )
                             }
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Text(
-                                    text = "💬 1단계. 카톡에서 대화 내보내기",
-                                    fontSize = 12.5.sp,
+                                    text = "💬 1. 카톡에서 대화 내보내기",
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "카톡 채팅방 우측 상단 메뉴(≡) > 설정(⚙️) > [대화 내용 내보내기] > [텍스트만 보내기/저장]을 눌러 파일을 저장해 주세요.",
-                                    fontSize = 11.sp,
-                                    lineHeight = 16.sp,
+                                    text = "카톡방 메뉴(≡) > 설정 > 대화 내용 내보내기에서 텍스트로 저장해요.",
+                                    fontSize = 10.5.sp,
+                                    lineHeight = 14.sp,
                                     color = Color(0xFF475569)
                                 )
                             }
                         }
 
-                        // Step 2: 대화 파일 열기 또는 직접 붙여넣기
+                        // Step 2: 대화 파일 열기 (텍스트 붙여넣기 기능 완전 제거)
                         Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-                                .padding(12.dp)
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(22.dp)
                                     .background(Color(0xFF2563EB), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "2",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                             }
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Text(
-                                    text = "📂 2단계. 대화 파일 열기 / 직접 붙여넣기",
-                                    fontSize = 12.5.sp,
+                                    text = "📂 2. 대화 파일 열기",
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "아래 노란색 [대화 파일 열기] 버튼으로 .txt 파일을 불러오거나, 복사한 대화 내용을 직접 붙여넣을 수도 있어요.",
-                                    fontSize = 11.sp,
-                                    lineHeight = 16.sp,
+                                    text = "아래 노란색 [대화 파일 열기] 버튼을 눌러 저장한 파일을 선택해 주세요.",
+                                    fontSize = 10.5.sp,
+                                    lineHeight = 14.sp,
                                     color = Color(0xFF475569)
                                 )
-                                // Clickable quick action chip
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFFEEF2FF))
-                                        .border(0.5.dp, Color(0xFFC7D2FE), RoundedCornerShape(6.dp))
-                                        .clickable { onPasteTextClick() }
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.ContentPaste,
-                                        contentDescription = "붙여넣기",
-                                        tint = Color(0xFF4338CA),
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Text(
-                                        text = "대화 내용 직접 붙여넣기 ➔",
-                                        fontSize = 10.5.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF4338CA)
-                                    )
-                                }
                             }
                         }
 
-                        // Step 3: AI 3줄 요약 & 3컷 웹툰 & 고화질 이미지 공유
+                        // Step 3: AI 요약 & 웹툰 공유
                         Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(9.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
-                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-                                .padding(12.dp)
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+                                .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(22.dp)
                                     .background(Color(0xFF059669), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "3",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                             }
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Text(
-                                    text = "🎨 3단계. AI 3줄 요약·3컷 웹툰 & 이미지 카톡 공유",
-                                    fontSize = 12.5.sp,
+                                    text = "🎨 3. AI 3줄 요약 & 웹툰 공유",
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "대화가 불러와지면 날짜별 AI 3줄 요약과 3컷 웹툰, 이 달의 대화 분석 리포트를 1080px 고화질 포스터 이미지로 카톡에 바로 공유하세요!",
-                                    fontSize = 11.sp,
-                                    lineHeight = 16.sp,
+                                    text = "날짜별 3줄 요약과 3컷 웹툰을 고화질 이미지로 카톡에 바로 공유해요.",
+                                    fontSize = 10.5.sp,
+                                    lineHeight = 14.sp,
                                     color = Color(0xFF475569)
                                 )
                             }
@@ -1829,6 +1805,33 @@ fun TimelineColumn(
                         color = Color.White,
                         maxLines = 1,
                         softWrap = false
+                    )
+                }
+            }
+        }
+
+        if (allChatDays.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = "보안 안심",
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = "대화 내용은 서버로 전송되지 않고 내 기기에서만 안전하게 분석돼요",
+                        fontSize = 11.sp,
+                        color = Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -1973,88 +1976,89 @@ fun TimelineColumn(
             }
         }
 
-        // Galaxy Gallery One UI Style: 3-Tier Segmented Switcher [년도별 | 월별 | 일별] + Count Badge
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 1.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            GalaxySegmentedSwitcher(
-                selectedMode = timelineGroupingMode,
-                onModeSelect = { viewModel.setTimelineGroupingMode(it) }
-            )
-
-            val totalMessages = chatDays.sumOf { it.msgCount }
-            val countLabel = when (timelineGroupingMode) {
-                TimelineGroupingMode.DAY -> "총 ${chatDays.size}일 (${totalMessages}건)"
-                TimelineGroupingMode.MONTH -> {
-                    val monthsCount = chatDays.map { it.date.take(7) }.distinct().size
-                    "총 ${monthsCount}개월 (${totalMessages}건)"
-                }
-                TimelineGroupingMode.YEAR -> {
-                    val yearsCount = chatDays.map { it.date.take(4) }.distinct().size
-                    "총 ${yearsCount}개년 (${totalMessages}건)"
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFFF1F5F9), RoundedCornerShape(999.dp))
-                    .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(999.dp))
-                    .padding(horizontal = 9.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = countLabel,
-                    fontSize = 10.5.sp,
-                    color = BrandSlate,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // Scrollable Lists according to selected grouping mode
-        if (chatDays.isEmpty()) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        if (allChatDays.isNotEmpty()) {
+            // Galaxy Gallery One UI Style: 3-Tier Segmented Switcher [년도별 | 월별 | 일별] + Count Badge
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .padding(vertical = 1.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                GalaxySegmentedSwitcher(
+                    selectedMode = timelineGroupingMode,
+                    onModeSelect = { viewModel.setTimelineGroupingMode(it) }
+                )
+
+                val totalMessages = chatDays.sumOf { it.msgCount }
+                val countLabel = when (timelineGroupingMode) {
+                    TimelineGroupingMode.DAY -> "총 ${chatDays.size}일 (${totalMessages}건)"
+                    TimelineGroupingMode.MONTH -> {
+                        val monthsCount = chatDays.map { it.date.take(7) }.distinct().size
+                        "총 ${monthsCount}개월 (${totalMessages}건)"
+                    }
+                    TimelineGroupingMode.YEAR -> {
+                        val yearsCount = chatDays.map { it.date.take(4) }.distinct().size
+                        "총 ${yearsCount}개년 (${totalMessages}건)"
+                    }
+                }
+
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .background(Color(0xFFF1F5F9), RoundedCornerShape(999.dp))
+                        .border(0.8.dp, Color(0xFFE2E8F0), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 9.dp, vertical = 4.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.List,
-                        contentDescription = "Empty list",
-                        tint = Color(0xFFCBD5E1),
-                        modifier = Modifier.size(52.dp)
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        "아직 불러온 대화가 없어요",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = BrandSlate
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        "위의 [카톡 대화 파일 열기] 또는 [대화 내용 붙여넣기]를 눌러 대화를 시작해 보세요.",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 18.sp
+                        text = countLabel,
+                        fontSize = 10.5.sp,
+                        color = BrandSlate,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
-        } else {
+
+            // Scrollable Lists according to selected grouping mode
+            if (chatDays.isEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.List,
+                            contentDescription = "Empty list",
+                            tint = Color(0xFFCBD5E1),
+                            modifier = Modifier.size(52.dp)
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            "선택한 기간에 일치하는 대화가 없어요",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = BrandSlate
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "상단 기간 필터를 재설정하거나 초기화 버튼(🔄)을 눌러보세요.",
+                            fontSize = 12.sp,
+                            color = Color(0xFF64748B),
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            } else {
             Crossfade(
                 targetState = timelineGroupingMode,
                 animationSpec = tween(220, easing = FastOutSlowInEasing),
@@ -2139,6 +2143,7 @@ fun TimelineColumn(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -4790,7 +4795,7 @@ fun WarmErrorGuidanceDialog(
                                 color = BrandSlate
                             )
                             Text(
-                                text = "카톡 채팅방 > 우측 상단 메뉴(≡) > 설정(⚙️) > [대화 내용 내보내기] 후 저장된 텍스트 파일(.txt)을 선택하거나 복사해서 붙여넣기 해보세요.",
+                                text = "카톡 채팅방 > 우측 상단 메뉴(≡) > 설정(⚙️) > [대화 내용 내보내기] 후 저장된 텍스트 파일(.txt)을 선택해 주세요.",
                                 fontSize = 11.sp,
                                 color = Color(0xFF64748B),
                                 lineHeight = 15.sp
