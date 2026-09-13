@@ -1555,7 +1555,7 @@ fun TimelineColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
-                    // Header: Badge + Title & Subtitle
+                    // Header: Harmonious Badge + Subtitle
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1563,7 +1563,8 @@ fun TimelineColumn(
                     ) {
                         Box(
                             modifier = Modifier
-                                .background(Color(0xFFFEF3C7), RoundedCornerShape(999.dp))
+                                .background(Color(0xFFEFF6FF), RoundedCornerShape(999.dp))
+                                .border(0.8.dp, Color(0xFFDBEAFE), RoundedCornerShape(999.dp))
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Row(
@@ -1573,14 +1574,14 @@ fun TimelineColumn(
                                 Icon(
                                     imageVector = Icons.Filled.Info,
                                     contentDescription = "가이드",
-                                    tint = Color(0xFFD97706),
+                                    tint = Color(0xFF2563EB),
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Text(
-                                    text = "초간단 가이드",
+                                    text = "초간단 이용 가이드",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF92400E)
+                                    color = Color(0xFF1D4ED8)
                                 )
                             }
                         }
@@ -1603,7 +1604,7 @@ fun TimelineColumn(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 3-Step Practical Flow (Toss Style: Simple, Friendly, Compact)
+                    // 3-Step Practical Flow (Toss Style: Unified Stepper Badges + Optimized Copy)
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -1621,25 +1622,25 @@ fun TimelineColumn(
                             Box(
                                 modifier = Modifier
                                     .size(22.dp)
-                                    .background(Color(0xFFFEE500), CircleShape),
+                                    .background(Color(0xFF2563EB), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "1",
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1E293B)
+                                    color = Color.White
                                 )
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Text(
-                                    text = "💬 1. 카톡에서 대화 내보내기",
-                                    fontSize = 11.5.sp,
+                                    text = "카카오톡 대화 내보내기",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "카톡방 메뉴(≡) > 설정 > 대화 내용 내보내기에서 텍스트로 저장해요.",
+                                    text = "채팅방 설정(≡) > [대화 내용 내보내기]에서 텍스트로 저장해요.",
                                     fontSize = 10.5.sp,
                                     lineHeight = 14.sp,
                                     color = Color(0xFF475569)
@@ -1647,7 +1648,7 @@ fun TimelineColumn(
                             }
                         }
 
-                        // Step 2: 대화 파일 열기 (텍스트 붙여넣기 기능 완전 제거)
+                        // Step 2: 대화 파일 불러오기
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(9.dp),
@@ -1665,20 +1666,20 @@ fun TimelineColumn(
                             ) {
                                 Text(
                                     text = "2",
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Text(
-                                    text = "📂 2. 대화 파일 열기",
-                                    fontSize = 11.5.sp,
+                                    text = "대화 파일 불러오기",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "아래 노란색 [대화 파일 열기] 버튼을 눌러 저장한 파일을 선택해 주세요.",
+                                    text = "아래 [대화 파일 열기] 버튼을 눌러 저장한 파일을 선택해요.",
                                     fontSize = 10.5.sp,
                                     lineHeight = 14.sp,
                                     color = Color(0xFF475569)
@@ -1699,25 +1700,25 @@ fun TimelineColumn(
                             Box(
                                 modifier = Modifier
                                     .size(22.dp)
-                                    .background(Color(0xFF059669), CircleShape),
+                                    .background(Color(0xFF2563EB), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "3",
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                             }
                             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                                 Text(
-                                    text = "🎨 3. AI 3줄 요약 & 웹툰 공유",
-                                    fontSize = 11.5.sp,
+                                    text = "AI 3줄 요약 & 웹툰 공유",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandSlate
                                 )
                                 Text(
-                                    text = "날짜별 3줄 요약과 3컷 웹툰을 고화질 이미지로 카톡에 바로 공유해요.",
+                                    text = "하루 대화 요약과 3컷 만화를 이미지로 카톡에 바로 공유해요.",
                                     fontSize = 10.5.sp,
                                     lineHeight = 14.sp,
                                     color = Color(0xFF475569)
@@ -1811,29 +1812,28 @@ fun TimelineColumn(
         }
 
         if (allChatDays.isEmpty()) {
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
-                contentAlignment = Alignment.Center
+                    .padding(top = 10.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Lock,
-                        contentDescription = "보안 안심",
-                        tint = Color(0xFF94A3B8),
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Text(
-                        text = "대화 내용은 서버로 전송되지 않고 내 기기에서만 안전하게 분석돼요",
-                        fontSize = 11.sp,
-                        color = Color(0xFF94A3B8),
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = "보안 안심",
+                    tint = Color(0xFF94A3B8),
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "대화는 서버 전송 없이 내 폰에서만 안전하게 분석돼요",
+                    fontSize = 11.sp,
+                    color = Color(0xFF94A3B8),
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    softWrap = false
+                )
             }
         }
 
